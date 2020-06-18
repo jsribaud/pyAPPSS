@@ -1,0 +1,6 @@
+# Don't track content of these folders
+.eggs/
+pyAPPSS.egg-info/
+pyappss/__pycache__/
+pyappss/analysis/__pycache__/
+
