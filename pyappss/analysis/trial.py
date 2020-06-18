@@ -1,9 +1,8 @@
 # Temporary
 
 
-def trial(file):
-    import numpy as np
-    from astropy.io import ascii
+def p1(x):
+    return x**3.+3.*x
 
-    tab = ascii.read(file)
-    print(tab.colnames)
+
+
