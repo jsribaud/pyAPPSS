@@ -4,3 +4,6 @@ pyAPPSS.egg-info/
 pyappss/__pycache__/
 pyappss/analysis/__pycache__/
 
+# Ignore these files
+.DS_Store
+
