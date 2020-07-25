@@ -14,6 +14,14 @@ class Baseline:
     Interactively baseline a spectrum.
     First asks user to select emission/RFI-free regions
     Then interactively fits polynomials of different orders
+    
+    When the instance is called the vel, spec, and rms are returned.
+    for e.g, b = Baseline(12159)
+    b()[0] is vel, b()[1] is spec, b()[2] is rms
+    Parameters
+    ----------
+    filename : int
+    AGC number of the galaxy, e.g, 104365 
     """
 
     def __init__(self, filename):
