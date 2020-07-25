@@ -13,7 +13,7 @@ from analysis import smooth
 class Measure:
     """
     Measure qualities of an HI spectrum.
-    Use an FITS file to calculate spectral features:
+    Use an FITS file or data arrays to calculate spectral features:
      - Integrated flux density
      - Systemic velocity
      - Source width
