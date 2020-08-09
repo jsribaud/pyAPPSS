@@ -13,6 +13,17 @@ The file "pyappss_env.yml" contains a list of python packages that have been use
 5. If for some reason you want to delete the python environment and start over this can be done with the command: `conda remove -n pyappss --all`. Needless to say, it's very important to be sure you want to do this before running this command, for example if you have modified the packages installed in the environment (see below), these changes will be lost permanently.
 
 
+# Alternative steps for using the pyappss environment on SciServer
+
+If you only want to use the pyappss python environment in the command line then you can simply start at step 3 above (as conda is installed as standard in the SciServer python containers). However, if you want to access it in a jupyter notebook or jupyter lab session then the steps are a little different. SciServer only allows you to launch the base installation of jupyter, not the one installed within a user-made environment, this means that we need to inform the base installation of jupyter about the existence of the python kernel associated with the pyappss environment. To do this follow these steps:
+
+1. Find and open the pyappss_env.yml file. Add the dependency "ipykernel". Then proceed with step 3 from above.
+
+2. Activate the pyappss environment using `conda activate pyappss`, then run the command: `ipython kernel install --user --name=pyappss`.
+
+3. Deactivate the environment, close the current session of the SciServer container (be sure to press the red square button to shutdown the container). Then restart the container and launch a jupyter notebook or jupyter lab session as before. In jupyter lab there should now be an option to launch a pyappss notebook, or in jupyter notebook, near the top right, there should be an option to change the kernel to pyappss.
+
+
 # Modifying the python environment
 
 If you are developing new code for the pyappss repository then you may want to install a python package/library that is not currently listed in the environment yml file. When the pyappss environment is active in your terminal you can use the command `conda install <package name>` to install a new package, or `conda search <package name>` to check if the package is available (Note: to search in a different conda repository, or "channel", you can use for example `conda search -c conda-forge <package name>`). Although this is probably the quickest approach to installing a new python package/library it has a significant drawback; it may modify the versions of the packages already installed in the environment in order to reconcile any conflicting dependencies. This in turn may modify or break the functionality of the existing code in the pyappss repository on your system.
