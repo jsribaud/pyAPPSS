@@ -18,3 +18,5 @@ dependencies:
  - emcee=3.0
  - pystan=2.19
  - pandas=1.0
+ - jupyterlab
+ - notebook

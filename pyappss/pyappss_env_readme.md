@@ -17,7 +17,7 @@ The file "pyappss_env.yml" contains a list of python packages that have been use
 
 If you only want to use the pyappss python environment in the command line then you can simply start at step 3 above (as conda is installed as standard in the SciServer python containers). However, if you want to access it in a jupyter notebook or jupyter lab session then the steps are a little different. SciServer only allows you to launch the base installation of jupyter, not the one installed within a user-made environment, this means that we need to inform the base installation of jupyter about the existence of the python kernel associated with the pyappss environment. To do this follow these steps:
 
-1. Find and open the pyappss_env.yml file. Add the dependency "ipykernel". Then proceed with step 3 from above.
+1. Find and open the pyappss_env.yml file. Remove the "jupyterlab" and "notebook" dependencies and add the dependency "ipykernel". Then proceed with step 3 from above.
 
 2. Activate the pyappss environment using `conda activate pyappss`, then run the command: `ipython kernel install --user --name=pyappss`.
 
