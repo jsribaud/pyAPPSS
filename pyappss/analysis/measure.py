@@ -7,7 +7,7 @@ matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
-from analysis import smooth
+from pyappss.analysis import smooth
 
 
 class Measure:
@@ -96,15 +96,19 @@ class Measure:
         if filename is not None:
             self.calcRMS()
         if gauss:
+            print("\n Select region with the source \n")
             self.gauss()
             self.__write_file(self.__get_comments())
         elif twopeak:
+            print("\n Select region with the source \n")
             self.twopeakfit()
             self.__write_file(self.__get_comments())
 
         elif trap:
+            print("\n Select region with the source \n")
             self.trapezoidal_fit()
             self.__write_file(self.__get_comments())
+
         else:
             input('Press Enter to Exit')
 
@@ -268,7 +272,6 @@ class Measure:
         # print('Area: ' + str(a))
         # print('Area Error: ' + str(aerr))
 
-        self.__print_values()
 
         self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
         self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
@@ -403,7 +406,6 @@ class Measure:
                                                                                                     righterror,
                                                                                                     rightvel,
                                                                                                     rightvel20, s, v)
-        self.__print_values()
 
         fig, ax = plt.subplots()
         ax.plot(v, s)
@@ -558,13 +560,11 @@ class Measure:
         global coords_trap
         coords_trap = list()
         cid = self.fig.canvas.mpl_connect('button_press_event', self.__trapezoidal_onclick)
-        # plt.pause(100)
+
 
     def __trapezoidal_onclick(self, event):
         """
-        Method which connects with the GUI and
-        :param event:
-        :return:
+        Method which connects with the GUI and assigns fit calculation values.
         """
         ix, iy = event.xdata, event.ydata
 
@@ -596,6 +596,7 @@ class Measure:
             self.SN = SN
 
             self.__print_values()
+
 
     def __trap_calc(self, x, y):
         """

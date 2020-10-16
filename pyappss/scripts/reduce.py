@@ -1,7 +1,7 @@
 import argparse
 
-from analysis import baseline
-from analysis import measure
+from pyappss.analysis import baseline
+from pyappss.analysis import measure
 
 
 def main(agc, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False):
