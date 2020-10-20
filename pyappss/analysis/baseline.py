@@ -5,9 +5,8 @@ import argparse
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from pyappss.analysis import smooth
+from analysis import smooth
 matplotlib.use('Qt5Agg')
-
 
 class Baseline:
     """
