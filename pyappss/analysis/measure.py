@@ -7,7 +7,7 @@ matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
-from pyappss.analysis import smooth
+from analysis import smooth
 
 
 class Measure:
@@ -272,7 +272,6 @@ class Measure:
         # print('Area: ' + str(a))
         # print('Area Error: ' + str(aerr))
 
-
         self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
         self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
                      'r')  # plotting the gaussian fit to the spectrum
@@ -413,7 +412,7 @@ class Measure:
         ax.plot(v, rightcoef[1] + rightcoef[0] * v)
         ax.plot([vsys, vsys], [-100, 1e4], linestyle='--', color='red', linewidth=0.5)
         ax.plot([leftvel, rightvel], [0.25 * (leftmaxval + rightmaxval), 0.25 * (leftmaxval + rightmaxval)],
-                  linestyle='--', color='red', linewidth=0.5)
+                linestyle='--', color='red', linewidth=0.5)
         ax.set(xlim=(min(v), max(v)), ylim=(min(s), max(s)))
         ax.axhline(y=0, dashes=[5, 5])
         title = self.filename[1:-5]
@@ -561,7 +560,6 @@ class Measure:
         coords_trap = list()
         cid = self.fig.canvas.mpl_connect('button_press_event', self.__trapezoidal_onclick)
 
-
     def __trapezoidal_onclick(self, event):
         """
         Method which connects with the GUI and assigns fit calculation values.
@@ -596,7 +594,6 @@ class Measure:
             self.SN = SN
 
             self.__print_values()
-
 
     def __trap_calc(self, x, y):
         """
