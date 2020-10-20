@@ -1,7 +1,7 @@
 import argparse
-
-from pyappss.analysis import baseline
-from pyappss.analysis import measure
+import sys
+sys.path.append('../')
+from analysis import baseline, measure
 
 
 def main(agc, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False):
