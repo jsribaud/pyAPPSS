@@ -7,6 +7,8 @@ matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
+import sys
+sys.path.append('../')
 from analysis import smooth
 
 
