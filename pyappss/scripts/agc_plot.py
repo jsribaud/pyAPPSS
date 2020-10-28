@@ -69,9 +69,9 @@ class Plot():
             self.open_ned(ned)
 
         if file2impose and (self.file_two is not None):
-            self.impose_plots(xmin, xmax, ymin, ymax, saveplot)
-        else:
             self.plot(xmin, xmax, ymin, ymax, saveplot)
+        else:
+            self.impose_plots(xmin, xmax, ymin, ymax, saveplot)
 
     # Filename can be accessed by calling this method.
     def name(self):
