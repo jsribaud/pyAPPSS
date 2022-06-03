@@ -74,9 +74,9 @@ class Measure:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
         self.cid = None
-
+#Filename modified here, as well
         if filename is not None:
-            self.filename = 'A{:06}.fits'.format(filename)
+            self.filename = 'AGC{:0}.fits'.format(filename)
             self.load()
             if smo is None:
                 self.res = smooth.smooth(self.spec)
@@ -88,7 +88,7 @@ class Measure:
             self.res = spec
             self.spec = spec
             self.rms = rms
-            self.filename = 'A{:06}.fits'.format(int(agc))
+            self.filename = 'AGC{:0}.fits'.format(int(agc))
 
         self.smoothed = True
 
@@ -615,7 +615,9 @@ class Measure:
             if self.vel[i] > base_vel[0]:
                 leftedge.append(i)
         leftedge = max(leftedge) - 1
-        rightedge = max(rightedge) + 1
+        #This throws an error with max, and works correctly with min, so has been modified according.
+        rightedge=min(rightedge) + 1
+        #rightedge = max(rightedge) + 1
         # Figure out the "peak" locations, i.e. where the spectrum hits a value of peak-rms
         # In the range given by the bases.
         peakval = max(self.spec[rightedge:leftedge]) - self.rms
@@ -717,11 +719,18 @@ class Measure:
         """
         hdr = self.__get_header()
         file = open('ReducedData.csv', 'a')
-        message = str(self.filename[1:-5]) + ',' + str(hdr[16]) + ',' + str(hdr[20]) + ',' + str(
-            hdr[21]) + ',' + str(hdr[18]) + ',' + str(hdr[19]) + ',' + str(self.vsys) + ',' + str(self.w50) + ',' + str(
+        #Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
+        message = (str(self.filename[3:-5]) + ',' +
+        #Currently commented as GBT files lack attached galaxy names
+        #str(hdr[16]) + ',' +
+        str(hdr['RA']) + ',' + str(
+            hdr['DEC']) + ','
+        #Similarly, there is not a comparison between optical and radio coordinates.
+        #+ str(hdr[18]) + ',' + str(hdr[19]) + ','
+        + str(self.vsys) + ',' + str(self.w50) + ',' + str(
             self.w50err) + ',' + str(self.w20) + ',' + str(self.flux) + ',' + str(self.fluxerr) + ',' + str(
             self.SN) + ',' + str(self.rms) + ',' + str(comments) + '\n'
-
+)
         file.write(message)
 
     def __get_comments(self):

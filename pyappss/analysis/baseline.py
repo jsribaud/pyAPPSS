@@ -25,7 +25,9 @@ class Baseline:
     """
 
     def __init__(self, filename):
-        self.filename = 'A{:06}.fits'.format(filename)
+        #Filename modified: to AGCxxxxx.fits
+        #May align more favorably with desired format, may not. Matches convert.py naming.
+        self.filename = 'AGC{:0}.fits'.format(filename)
         self.smoothed = False
         self.n = -1
         self.m = []
@@ -71,7 +73,8 @@ class Baseline:
         for i in range(len(fitsdata)):
             self.vel[i] = fitsdata[i][0]
             self.freq[i] = fitsdata[i][1]
-            self.spec[i] = fitsdata[i][2] + fitsdata[i][3]
+            self.spec[i] = fitsdata[i][2]
+            
             self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
             self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
 
@@ -86,31 +89,67 @@ class Baseline:
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
         self.fig.canvas.draw()
 
-    def __mask(self):  # interactive masking
-        regions = []  # a list of the user selected numbers
-        cont = True
-        while cont == True:
-            num = input('Enter a number, or hit \'Enter\' to finish masking: ')
-            if (num == ''):
-                cont = False
-            else:
-                regions.append(int(num))
-        regions.sort()
-        X = []
-        self.m = []  # a list of booleans where True is if the velocity is within the selected region
+    # def __mask(self):  # interactive masking
+    #     regions = []  # a list of the user selected numbers
+    #     cont = True
+    #     while cont == True:
+    #         num = input('Enter a number, or hit \'Enter\' to finish masking: ')
+    #         if (num == ''):
+    #             cont = False
+    #         else:
+    #             regions.append(int(num))
+    #     regions.sort()
+    #     X = []
+    #     self.m = []  # a list of booleans where True is if the velocity is within the selected region
+    #     for i in range(len(self.vel)):
+    #         j = 0
+    #         inRegion = False
+    #         while (j < len(regions) - 1):
+    #             if (self.vel[i] >= regions[j] and self.vel[i] <= regions[j + 1]):  # in between the marked regions
+    #                 X.append(self.vel[i])
+    #                 inRegion = True
+    #             j = j + 2  # going to the next region
+    #         self.m.append(inRegion)
+    #     self.n = len(X)  # Number of points being fit to
+    #     self.m = np.array(
+    #         self.m)  # converting this to a numpy array so we can make use of other functionalities of the numpy class.
+
+#Alternative code written using functions from measure.py, reapplied to masking. Original method is above, but requires manually entering values.
+
+#This masking variant requires only clicking to select regions.
+    def __mask(self):
+
+        global mask_regions
+        global regions
+        regions = []
+
+        mask_regions = self.fig.canvas.mpl_connect('button_press_event', self.__maskregions_onclick)
+        response = input('Press Enter to finish  masking')
+        if response == '':
+            self.fig.canvas.mpl_disconnect(mask_regions)
+            #self.fig.canvas.mpl_connect('button_press_event', self.__maskregions_onclick)
+        X= []
+        self.m = []
         for i in range(len(self.vel)):
             j = 0
             inRegion = False
-            while (j < len(regions) - 1):
-                if (self.vel[i] >= regions[j] and self.vel[i] <= regions[j + 1]):  # in between the marked regions
+            while (j < len(regions) -1):
+                if (self.vel[i] >= regions[j] and self.vel[i] <= regions[j + 1]): #Used to set regions as between each pair of entries.
                     X.append(self.vel[i])
                     inRegion = True
-                j = j + 2  # going to the next region
+                j = j + 2
             self.m.append(inRegion)
-        self.n = len(X)  # Number of points being fit to
-        self.m = np.array(
-            self.m)  # converting this to a numpy array so we can make use of other functionalities of the numpy class.
+        self.n = len(X)
+        self.m = np.array (self.m)
 
+    def __maskregions_onclick(self, event):
+
+        ix, iy = event.xdata, event.ydata
+        #Bounds have been extended in case of originally odd baselines.
+        self.ax.plot([ix, ix], [-1e4, 1e4], linestyle='--', linewidth=0.7, color='green')
+        regions.append(ix)
+        #self.fig.canvas.mpl_disconnect(mask_regions)
+        
     def markregions(self):
 
         global mark_regions
@@ -183,8 +222,7 @@ class Baseline:
                 for i in range(len(self.vel)):
                     yval = 0
                     for j in range(order + 1):
-                        yval += (coeff[j] * (self.vel[i] ** (
-                                    order - j)))  # generating y-values based on the calculated coefficient array.
+                        yval += (coeff[j] * (self.vel[i] ** (order - j)))  # generating y-values based on the calculated coefficient array.
                     yfit.append(yval)
 
                 # calculate the rms
