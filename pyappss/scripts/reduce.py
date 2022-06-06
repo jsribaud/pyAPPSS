@@ -5,7 +5,7 @@ from analysis import measure
 
 
 def main(agc, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False):
-    b = baseline.Baseline(agc)
+    b = baseline.Baseline(agc, smooth_int=smo)
     vel, spec, rms = b()
     measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, light_mode=light_mode,
                     vel=vel, spec=spec, rms=rms, agc=agc)

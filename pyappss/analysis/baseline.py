@@ -38,9 +38,9 @@ class Baseline:
         self.res = []
         self.smo = []
         self.rms = 0
-
+        
         self.__load()
-        self.smo = smooth.smooth(self.spec)
+        self.smo = smooth.smooth(self.spec, smooth_type=smooth_int)
         self.res = self.smo
         self.smoothed = True
 
