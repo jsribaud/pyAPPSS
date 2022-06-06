@@ -24,7 +24,7 @@ class Baseline:
     AGC number of the galaxy, e.g, 104365 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, smooth_int):
         #Filename modified: to AGCxxxxx.fits
         #May align more favorably with desired format, may not. Matches convert.py naming.
         self.filename = 'AGC{:0}.fits'.format(filename)

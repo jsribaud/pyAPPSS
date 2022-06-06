@@ -268,7 +268,7 @@ class Measure:
         # print('Area: ' + str(a))
         # print('Area Error: ' + str(aerr))
 
-        self.__print_values()
+        #self.__print_values()
 
         self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
         self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
@@ -403,7 +403,7 @@ class Measure:
                                                                                                     righterror,
                                                                                                     rightvel,
                                                                                                     rightvel20, s, v)
-        self.__print_values()
+        #self.__print_values()
 
         fig, ax = plt.subplots()
         ax.plot(v, s)
