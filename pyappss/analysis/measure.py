@@ -101,7 +101,7 @@ class Measure:
             print('Do you want to keep your previously selected fit type?\nType "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type')
             response = input()
             if response != 'yes':
-                print('Please select your new fit type!\nThe accepted fit methods are: "gauss" for a gaussian, "twopeak" for a double-horned profile fit, or "trap" for a trapezoidal fit')
+                print('Please select your new fit type!\nThe accepted fit methods are: "gauss" for a gaussian, "twopeak" for a double-horned profile fit, or "trap" for a trapezoidal fit.\nOnce done, hit Enter, with no text input, to move on. Multiple fit options can still be selected in this step!')
                 chosen = False
                 twopeak = False
                 trap = False
@@ -110,26 +110,29 @@ class Measure:
                     response = input()
                     if response == 'gauss':
                         gauss=True
-                        chosen = True
                     elif response == 'twopeak':
                         twopeak=True
-                        chosen=True
                     elif response == 'trap':
                         trap=True
+                    elif response == '':
                         chosen=True
                     else:
                         print('Please enter a valid fit option!\nAccepted values are "gauss", "twopeak", and "trap"')
 
 
         if gauss:
+            fittype = 'gauss'
             self.gauss()
-            self.__write_file(self.__get_comments())
-        elif twopeak:
+            self.__write_file(self.__get_comments(), fittype)
+        if twopeak:
+            fittype = 'twopeak'
             self.twopeakfit()
-            self.__write_file(self.__get_comments())
-        elif trap:
+            self.__write_file(self.__get_comments(), fittype)
+
+        if trap:
+            fittype = 'trap'
             self.trapezoidal_fit()
-            self.__write_file(self.__get_comments())
+            self.__write_file(self.__get_comments(), fittype)
         else:
             input('Press Enter to Exit')
 
@@ -231,7 +234,7 @@ class Measure:
         global mark_regions
         global regions
         regions = []
-        # self.plot()
+        #self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
         response = input('Press Enter if this region is OK ')
@@ -368,6 +371,7 @@ class Measure:
         #         self.baseline()
         #     else:
         #         sys.exit('Program exited. Not baselined.')
+        self.plot()
         v, s = self.markregions()
         self.plot(min(v), max(v), min(s), max(s))
         left = True  # left fitting starts as true, so user fits the left side of the emission first.
@@ -572,6 +576,7 @@ class Measure:
         Method to fit a trapezoidal fit
         :return:
         """
+        self.plot()
         v, s = self.markregions()
         plt.cla()
         self.ax.plot(v, s)
@@ -737,7 +742,7 @@ class Measure:
         hdr = hdul[1].header
         return hdr
 
-    def __write_file(self, comments):
+    def __write_file(self, comments, fittype):
         """
         Writes the values of the quantities to the CSV file.
         :param comments: comments on the fit
@@ -746,7 +751,7 @@ class Measure:
         file_exists = os.path.exists('ReducedData.csv')
         if file_exists == False:
             file = open('ReducedData.csv', 'x')
-            message_info = ('AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,comments' +'\n')
+            message_info = ('AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,FitType,comments' +'\n')
             file.write(message_info)
         
         hdr = self.__get_header()
@@ -761,7 +766,7 @@ class Measure:
         #+ str(hdr[18]) + ',' + str(hdr[19]) + ','
         + str(self.vsys) + ',' + str(self.w50) + ',' + str(
             self.w50err) + ',' + str(self.w20) + ',' + str(self.flux) + ',' + str(self.fluxerr) + ',' + str(
-            self.SN) + ',' + str(self.rms) + ',' + str(comments) + '\n'
+                self.SN) + ',' + str(self.rms) + ',' + str(fittype) + ',' + str(comments) + '\n'
 )
         file.write(message)
 
