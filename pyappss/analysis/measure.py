@@ -2,6 +2,7 @@ from astropy.io import fits
 import argparse
 import numpy as np
 import matplotlib
+import os
 
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
@@ -717,6 +718,13 @@ class Measure:
         Writes the values of the quantities to the CSV file.
         :param comments: comments on the fit
         """
+
+        file_exists = os.path.exists('ReducedData.csv')
+        if file_exists == False:
+            file = open('ReducedData.csv', 'x')
+            message_info = ('AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,comments' +'\n')
+            file.write(message_info)
+        
         hdr = self.__get_header()
         file = open('ReducedData.csv', 'a')
         #Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
