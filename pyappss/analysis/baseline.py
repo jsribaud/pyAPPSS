@@ -24,7 +24,7 @@ class Baseline:
     AGC number of the galaxy, e.g, 104365 
     """
 
-    def __init__(self, filename, smooth_int):
+    def __init__(self, filename, smooth_int, noconfirm=False):
         #Filename modified: to AGCxxxxx.fits
         #May align more favorably with desired format, may not. Matches convert.py naming.
         self.filename = 'AGC{:0}.fits'.format(filename)
@@ -50,8 +50,10 @@ class Baseline:
         self.ax = self.fig.add_subplot()
         self.cid = None
 
+        noconfirm=noconfirm
+        
         self.__plot()
-        self.baseline()
+        self.baseline(noconfirm)
         self.__plot()
         input('Press Enter to end Baseline.')
 
@@ -272,7 +274,7 @@ class Baseline:
             recommend = omax  # if nothing else seems to work, recommend the 9th order polynomial
         return recommend, rmsval, pval
 
-    def baseline(self):
+    def baseline(self, noconfirm=False):
         # self.smooth()  # smoothing the function
         self.__mask()  # masking the function
         recommended, rmsval, pval = self.calcpoly()  # calculating the recommended order of the function
@@ -300,7 +302,21 @@ class Baseline:
 
             response = input()
             if response is '':
-                accepted = True
+                if noconfirm:
+                    accepted = True
+                else:
+                    self.__plot()
+                    print('Press Enter again to confirm this baseline fit. Type anything else and hit enter to try again.')
+                    response = input()
+                    if response is '':
+                        accepted = True
+                    else:
+                        self.res = np.asarray(self.smo)
+                        self.__plot()
+                        if order < 10:
+                            print('Plotting a ' + titles[order] + ' order fit.')
+                        else:
+                            print('Plotting a ' + str(order) + 'order fit.')
             elif int(response) is -1:
                 accepted = True
             else:
@@ -311,6 +327,7 @@ class Baseline:
                     print('Plotting a ' + titles[order] + ' order fit.')
                 else:
                     print('Plotting a ' + str(order) + ' order fit.')
+            
 
 
 if __name__ == '__main__':

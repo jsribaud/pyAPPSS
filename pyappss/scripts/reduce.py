@@ -4,11 +4,11 @@ from analysis import baseline
 from analysis import measure
 
 
-def main(agc, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False):
-    b = baseline.Baseline(agc, smooth_int=smo)
+def main(agc, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False, noconfirm=False):
+    b = baseline.Baseline(agc, smooth_int=smo, noconfirm=noconfirm)
     vel, spec, rms = b()
     measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, light_mode=light_mode,
-                    vel=vel, spec=spec, rms=rms, agc=agc)
+                    vel=vel, spec=spec, rms=rms, agc=agc, noconfirm=noconfirm)
 
 
 if __name__ == '__main__':
@@ -23,7 +23,8 @@ if __name__ == '__main__':
     parser.add_argument('-twopeak', action='store_true', help='Do a Two Peak fit of the spectrum')
     parser.add_argument('-trap', action='store_true', help='Do a Trapezoidal fit of the spectrum')
     parser.add_argument('-pub', action='store_true', help='Plot in Light Mode which is good for publication')
+    parser.add_argument('-noconfirm', action='store_true', help='Additional option to remove confirmations, both for baseline selection and for fit model choice')
 
     args = parser.parse_args()
     main(agc=args.filename, smo=args.smo, gauss=args.gauss, twopeak=args.twopeak, trap=args.trap,
-         light_mode=args.pub)
+         light_mode=args.pub, noconfirm=args.noconfirm)

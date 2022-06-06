@@ -45,7 +45,7 @@ class Measure:
     """
 
     def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False,
-                 vel=None, spec=None, rms=None, agc=None):
+                 vel=None, spec=None, rms=None, agc=None, noconfirm=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -96,13 +96,37 @@ class Measure:
         self.plot()
         if filename is not None:
             self.calcRMS()
+        #Adds in a choice to change fit if baseline/viewable data leads reducer to want some different fit type.
+        if noconfirm == False:
+            print('Do you want to keep your previously selected fit type?\nType "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type')
+            response = input()
+            if response != 'yes':
+                print('Please select your new fit type!\nThe accepted fit methods are: "gauss" for a gaussian, "twopeak" for a double-horned profile fit, or "trap" for a trapezoidal fit')
+                chosen = False
+                twopeak = False
+                trap = False
+                gauss = False
+                while not chosen:
+                    response = input()
+                    if response == 'gauss':
+                        gauss=True
+                        chosen = True
+                    elif response == 'twopeak':
+                        twopeak=True
+                        chosen=True
+                    elif response == 'trap':
+                        trap=True
+                        chosen=True
+                    else:
+                        print('Please enter a valid fit option!\nAccepted values are "gauss", "twopeak", and "trap"')
+
+
         if gauss:
             self.gauss()
             self.__write_file(self.__get_comments())
         elif twopeak:
             self.twopeakfit()
             self.__write_file(self.__get_comments())
-
         elif trap:
             self.trapezoidal_fit()
             self.__write_file(self.__get_comments())
