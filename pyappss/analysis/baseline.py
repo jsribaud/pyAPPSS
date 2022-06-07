@@ -38,7 +38,7 @@ class Baseline:
         self.res = []
         self.smo = []
         self.rms = 0
-        
+
         self.__load()
         self.smo = smooth.smooth(self.spec, smooth_type=smooth_int)
         self.res = self.smo
@@ -126,10 +126,20 @@ class Baseline:
         regions = []
 
         mask_regions = self.fig.canvas.mpl_connect('button_press_event', self.__maskregions_onclick)
-        response = input('Press Enter to finish  masking')
-        if response == '':
-            self.fig.canvas.mpl_disconnect(mask_regions)
-            #self.fig.canvas.mpl_connect('button_press_event', self.__maskregions_onclick)
+        response = input('Please select regions to be used for baselining. These regions should be free of RFI and the source.\nPress Enter once done selecting regions, or type "clear" and press Enter to clear region selection and start over.\n')
+        done_baselining = False
+        while not done_baselining:
+            if response == '':
+                self.fig.canvas.mpl_disconnect(mask_regions)
+                print('Calculating best baseline fit. Please wait.')
+                done_baselining = True
+            elif response == 'clear':
+                regions.clear()
+                self.__plot()
+                response = input('Regions cleared! Select new regions now.\nPress Enter once done selecting regions, or type "clear" and press Enter to clear region selection and start over.\n')
+                #self.fig.canvas.mpl_connect('button_press_event', self.__maskregions_onclick)
+            else:
+                response = input()
         X= []
         self.m = []
         for i in range(len(self.vel)):

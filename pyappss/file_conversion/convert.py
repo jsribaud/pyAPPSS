@@ -20,7 +20,7 @@ if flag != None:
         instrument='GBT L-band Receiver'
         beam='8.96'
     else:
-        sys.exit('Please Use a Valid Flag')
+        sys.exit('Please Use a Valid Flag.\nCurrently supported flags are:\nAGBT22A-430')
 else:
     observatory=''
     beam=''

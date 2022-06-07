@@ -121,17 +121,20 @@ class Measure:
 
 
         if gauss:
+            first_region = True
             fittype = 'gauss'
-            self.gauss()
+            self.gauss(first_region)
             self.__write_file(self.__get_comments(), fittype)
         if twopeak:
             fittype = 'twopeak'
-            self.twopeakfit()
+            first_region = True
+            self.twopeakfit(first_region)
             self.__write_file(self.__get_comments(), fittype)
 
         if trap:
             fittype = 'trap'
-            self.trapezoidal_fit()
+            first_region = True
+            self.trapezoidal_fit(first_region)
             self.__write_file(self.__get_comments(), fittype)
         else:
             input('Press Enter to Exit')
@@ -224,7 +227,7 @@ class Measure:
         self.rms = np.std(s)
         print('\n RMS of Spectrum: ', self.rms)
 
-    def markregions(self):
+    def markregions(self, first_region=True):
         """
         Method to interactively select regions on the spectrum
         :return: v, the velocity values in the region
@@ -237,10 +240,24 @@ class Measure:
         #self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-        response = input('Press Enter if this region is OK ')
-        if response != '':
-            regions.clear()
-            self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+        if first_region == True:
+            region_message = 'Select a region free of RFI that has the source within it.\nIf for the gaussian fit, it is recommended to use a wide region.\nOnce done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
+        else:
+            region_message = 'Once done, press enter if the region is OK, or type "clear" and press Enter to clear region selection.'
+        response = input(region_message)
+        regions_good = False
+        while not regions_good:
+            if response =='':
+                regions_good = True
+            elif response == 'clear':
+                del regions
+                regions =[]
+                #regions.clear()
+                self.plot()
+                mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+                response = input('Region cleared! Select a new region now. Press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n')
+            else:
+                response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
         # self.fig.canvas.mpl_disconnect(mark_regions)
         regions.sort()
         v = list()
@@ -270,7 +287,7 @@ class Measure:
             self.ax.plot([ix, ix], [-100, 1e4], linestyle='--', linewidth=0.7, color='green')
             regions.append(ix)
             if len(regions) is 2:
-                self.fig.canvas.mpl_disconnect(mark_regions)
+                 self.fig.canvas.mpl_disconnect(mark_regions)
 
     def gaussfunc(self, v, s, v0, sigma):
         """
@@ -278,12 +295,12 @@ class Measure:
         """
         return s * np.exp(-(v - v0) ** 2 / (2 * sigma ** 2))
 
-    def gauss(self):
+    def gauss(self, first_region=True):
         """
         Method to fit a gaussian fit.
         Assigns the spectrum qualities to their instance variables.
         """
-        vel, spec = self.markregions()
+        vel, spec = self.markregions(first_region)
         plt.cla()
         a, aerr, fluxerr, peakmJy, popt, s, totflux, v, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(
             vel, spec)
@@ -303,7 +320,7 @@ class Measure:
                      'r')  # plotting the gaussian fit to the spectrum
         # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
         self.ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[1:-5]
+        title = self.filename[3:-5]
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
         # plt.pause(1000)
         self.w50 = w50
@@ -359,7 +376,7 @@ class Measure:
         peakmJy = a / (popt[2] * np.sqrt(2 * np.pi))  # peakflux calculation: area/(sigma * sqrt(2pi))
         return a, aerr, fluxerr, peakmJy, popt, spec, totflux, vel, vsys, vsyserr, w20, w20err, w50, w50err
 
-    def twopeakfit(self):
+    def twopeakfit(self, first_region=True):
         """
         Method to fit a two peak profile
         :return:
@@ -372,7 +389,7 @@ class Measure:
         #     else:
         #         sys.exit('Program exited. Not baselined.')
         self.plot()
-        v, s = self.markregions()
+        v, s = self.markregions(first_region)
         self.plot(min(v), max(v), min(s), max(s))
         left = True  # left fitting starts as true, so user fits the left side of the emission first.
         right = False  # user will fit right side of emission second.
@@ -384,7 +401,8 @@ class Measure:
         # left fitting
         while left:
             print('\n Select the region around the left emission.')
-            leftv, lefts = self.markregions()
+            first_region = False
+            leftv, lefts = self.markregions(first_region)
             fitedge = []
             fitedge.append(min(leftv))
             fitedge.append(max(leftv))
@@ -398,7 +416,7 @@ class Measure:
             self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
             self.ax.set(ylim=(min(self.res), max(self.res)))
             self.ax.axhline(y=0, dashes=[5, 5])
-            title = self.filename[1:-5]
+            title = self.filename[3:-5]
             self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
             # plt.show()
             response = input('Is this fit OK? Press \'Enter\' for Yes or any other key for No.')
@@ -407,8 +425,9 @@ class Measure:
         # right fitting
         right = True  # user fits right side of emission
         while right:
+            first_region = False
             print('\n Select the region around the right emission.')
-            rightv, rights = self.markregions()
+            rightv, rights = self.markregions(first_region)
             fitedge = []
             fitedge.append(min(rightv))
             fitedge.append(max(rightv))
@@ -571,19 +590,19 @@ class Measure:
 
         return coef, velocity, vel20, sigma, cov, maxval, error
 
-    def trapezoidal_fit(self):
+    def trapezoidal_fit(self, first_region=True):
         """
         Method to fit a trapezoidal fit
         :return:
         """
         self.plot()
-        v, s = self.markregions()
+        v, s = self.markregions(first_region)
         plt.cla()
         self.ax.plot(v, s)
         self.ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[1:-5]
+        title = self.filename[3:-5]
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
-        print("\n Select points around the emission\n")
+        print("\n Select points around the emission\nTwo points should be on the outside slope of the left side, and two points should be on the outside slope of the right side.")
         global cid
         global coords_trap
         coords_trap = list()
