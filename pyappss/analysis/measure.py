@@ -2,6 +2,7 @@ from astropy.io import fits
 import argparse
 import numpy as np
 import matplotlib
+import os
 
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
@@ -44,7 +45,7 @@ class Measure:
     """
 
     def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False,
-                 vel=None, spec=None, rms=None, agc=None):
+                 vel=None, spec=None, rms=None, agc=None, noconfirm=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -74,9 +75,9 @@ class Measure:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
         self.cid = None
-
+#Filename modified here, as well
         if filename is not None:
-            self.filename = 'A{:06}.fits'.format(filename)
+            self.filename = 'AGC{:0}.fits'.format(filename)
             self.load()
             if smo is None:
                 self.res = smooth.smooth(self.spec)
@@ -88,23 +89,53 @@ class Measure:
             self.res = spec
             self.spec = spec
             self.rms = rms
-            self.filename = 'A{:06}.fits'.format(int(agc))
+            self.filename = 'AGC{:0}.fits'.format(int(agc))
 
         self.smoothed = True
 
         self.plot()
         if filename is not None:
             self.calcRMS()
-        if gauss:
-            self.gauss()
-            self.__write_file(self.__get_comments())
-        elif twopeak:
-            self.twopeakfit()
-            self.__write_file(self.__get_comments())
+        #Adds in a choice to change fit if baseline/viewable data leads reducer to want some different fit type.
+        if noconfirm == False:
+            print('Do you want to keep your previously selected fit type?\nType "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type')
+            response = input()
+            if response != 'yes':
+                print('Please select your new fit type!\nThe accepted fit methods are: "gauss" for a gaussian, "twopeak" for a double-horned profile fit, or "trap" for a trapezoidal fit.\nOnce done, hit Enter, with no text input, to move on. Multiple fit options can still be selected in this step!')
+                chosen = False
+                twopeak = False
+                trap = False
+                gauss = False
+                while not chosen:
+                    response = input()
+                    if response == 'gauss':
+                        gauss=True
+                    elif response == 'twopeak':
+                        twopeak=True
+                    elif response == 'trap':
+                        trap=True
+                    elif response == '':
+                        chosen=True
+                    else:
+                        print('Please enter a valid fit option!\nAccepted values are "gauss", "twopeak", and "trap"')
 
-        elif trap:
-            self.trapezoidal_fit()
-            self.__write_file(self.__get_comments())
+
+        if gauss:
+            first_region = True
+            fittype = 'gauss'
+            self.gauss(first_region)
+            self.__write_file(self.__get_comments(), fittype)
+        if twopeak:
+            fittype = 'twopeak'
+            first_region = True
+            self.twopeakfit(first_region)
+            self.__write_file(self.__get_comments(), fittype)
+
+        if trap:
+            fittype = 'trap'
+            first_region = True
+            self.trapezoidal_fit(first_region)
+            self.__write_file(self.__get_comments(), fittype)
         else:
             input('Press Enter to Exit')
 
@@ -196,7 +227,7 @@ class Measure:
         self.rms = np.std(s)
         print('\n RMS of Spectrum: ', self.rms)
 
-    def markregions(self):
+    def markregions(self, first_region=True):
         """
         Method to interactively select regions on the spectrum
         :return: v, the velocity values in the region
@@ -206,13 +237,27 @@ class Measure:
         global mark_regions
         global regions
         regions = []
-        # self.plot()
+        #self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-        response = input('Press Enter if this region is OK ')
-        if response != '':
-            regions.clear()
-            self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+        if first_region == True:
+            region_message = 'Select a region free of RFI that has the source within it.\nIf for the gaussian fit, it is recommended to use a wide region.\nOnce done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
+        else:
+            region_message = 'Once done, press enter if the region is OK, or type "clear" and press Enter to clear region selection.'
+        response = input(region_message)
+        regions_good = False
+        while not regions_good:
+            if response =='':
+                regions_good = True
+            elif response == 'clear':
+                del regions
+                regions =[]
+                #regions.clear()
+                self.plot()
+                mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+                response = input('Region cleared! Select a new region now. Press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n')
+            else:
+                response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
         # self.fig.canvas.mpl_disconnect(mark_regions)
         regions.sort()
         v = list()
@@ -242,7 +287,7 @@ class Measure:
             self.ax.plot([ix, ix], [-100, 1e4], linestyle='--', linewidth=0.7, color='green')
             regions.append(ix)
             if len(regions) is 2:
-                self.fig.canvas.mpl_disconnect(mark_regions)
+                 self.fig.canvas.mpl_disconnect(mark_regions)
 
     def gaussfunc(self, v, s, v0, sigma):
         """
@@ -250,12 +295,12 @@ class Measure:
         """
         return s * np.exp(-(v - v0) ** 2 / (2 * sigma ** 2))
 
-    def gauss(self):
+    def gauss(self, first_region=True):
         """
         Method to fit a gaussian fit.
         Assigns the spectrum qualities to their instance variables.
         """
-        vel, spec = self.markregions()
+        vel, spec = self.markregions(first_region)
         plt.cla()
         a, aerr, fluxerr, peakmJy, popt, s, totflux, v, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(
             vel, spec)
@@ -268,14 +313,14 @@ class Measure:
         # print('Area: ' + str(a))
         # print('Area Error: ' + str(aerr))
 
-        self.__print_values()
+        #self.__print_values()
 
         self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
         self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
                      'r')  # plotting the gaussian fit to the spectrum
         # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
         self.ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[1:-5]
+        title = self.filename[3:-5]
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
         # plt.pause(1000)
         self.w50 = w50
@@ -331,7 +376,7 @@ class Measure:
         peakmJy = a / (popt[2] * np.sqrt(2 * np.pi))  # peakflux calculation: area/(sigma * sqrt(2pi))
         return a, aerr, fluxerr, peakmJy, popt, spec, totflux, vel, vsys, vsyserr, w20, w20err, w50, w50err
 
-    def twopeakfit(self):
+    def twopeakfit(self, first_region=True):
         """
         Method to fit a two peak profile
         :return:
@@ -343,7 +388,8 @@ class Measure:
         #         self.baseline()
         #     else:
         #         sys.exit('Program exited. Not baselined.')
-        v, s = self.markregions()
+        self.plot()
+        v, s = self.markregions(first_region)
         self.plot(min(v), max(v), min(s), max(s))
         left = True  # left fitting starts as true, so user fits the left side of the emission first.
         right = False  # user will fit right side of emission second.
@@ -355,7 +401,8 @@ class Measure:
         # left fitting
         while left:
             print('\n Select the region around the left emission.')
-            leftv, lefts = self.markregions()
+            first_region = False
+            leftv, lefts = self.markregions(first_region)
             fitedge = []
             fitedge.append(min(leftv))
             fitedge.append(max(leftv))
@@ -369,7 +416,7 @@ class Measure:
             self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
             self.ax.set(ylim=(min(self.res), max(self.res)))
             self.ax.axhline(y=0, dashes=[5, 5])
-            title = self.filename[1:-5]
+            title = self.filename[3:-5]
             self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
             # plt.show()
             response = input('Is this fit OK? Press \'Enter\' for Yes or any other key for No.')
@@ -378,8 +425,9 @@ class Measure:
         # right fitting
         right = True  # user fits right side of emission
         while right:
+            first_region = False
             print('\n Select the region around the right emission.')
-            rightv, rights = self.markregions()
+            rightv, rights = self.markregions(first_region)
             fitedge = []
             fitedge.append(min(rightv))
             fitedge.append(max(rightv))
@@ -403,7 +451,7 @@ class Measure:
                                                                                                     righterror,
                                                                                                     rightvel,
                                                                                                     rightvel20, s, v)
-        self.__print_values()
+        #self.__print_values()
 
         fig, ax = plt.subplots()
         ax.plot(v, s)
@@ -542,18 +590,19 @@ class Measure:
 
         return coef, velocity, vel20, sigma, cov, maxval, error
 
-    def trapezoidal_fit(self):
+    def trapezoidal_fit(self, first_region=True):
         """
         Method to fit a trapezoidal fit
         :return:
         """
-        v, s = self.markregions()
+        self.plot()
+        v, s = self.markregions(first_region)
         plt.cla()
         self.ax.plot(v, s)
         self.ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[1:-5]
+        title = self.filename[3:-5]
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
-        print("\n Select points around the emission\n")
+        print("\n Select points around the emission\nTwo points should be on the outside slope of the left side, and two points should be on the outside slope of the right side.")
         global cid
         global coords_trap
         coords_trap = list()
@@ -615,7 +664,9 @@ class Measure:
             if self.vel[i] > base_vel[0]:
                 leftedge.append(i)
         leftedge = max(leftedge) - 1
-        rightedge = max(rightedge) + 1
+        #This throws an error with max, and works correctly with min, so has been modified according.
+        rightedge=min(rightedge) + 1
+        #rightedge = max(rightedge) + 1
         # Figure out the "peak" locations, i.e. where the spectrum hits a value of peak-rms
         # In the range given by the bases.
         peakval = max(self.spec[rightedge:leftedge]) - self.rms
@@ -710,18 +761,32 @@ class Measure:
         hdr = hdul[1].header
         return hdr
 
-    def __write_file(self, comments):
+    def __write_file(self, comments, fittype):
         """
         Writes the values of the quantities to the CSV file.
         :param comments: comments on the fit
         """
+
+        file_exists = os.path.exists('ReducedData.csv')
+        if file_exists == False:
+            file = open('ReducedData.csv', 'x')
+            message_info = ('AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,FitType,comments' +'\n')
+            file.write(message_info)
+        
         hdr = self.__get_header()
         file = open('ReducedData.csv', 'a')
-        message = str(self.filename[1:-5]) + ',' + str(hdr[16]) + ',' + str(hdr[20]) + ',' + str(
-            hdr[21]) + ',' + str(hdr[18]) + ',' + str(hdr[19]) + ',' + str(self.vsys) + ',' + str(self.w50) + ',' + str(
+        #Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
+        message = (str(self.filename[3:-5]) + ',' +
+        #Currently commented as GBT files lack attached galaxy names
+        #str(hdr[16]) + ',' +
+        str(hdr['RA']) + ',' + str(
+            hdr['DEC']) + ','
+        #Similarly, there is not a comparison between optical and radio coordinates.
+        #+ str(hdr[18]) + ',' + str(hdr[19]) + ','
+        + str(self.vsys) + ',' + str(self.w50) + ',' + str(
             self.w50err) + ',' + str(self.w20) + ',' + str(self.flux) + ',' + str(self.fluxerr) + ',' + str(
-            self.SN) + ',' + str(self.rms) + ',' + str(comments) + '\n'
-
+                self.SN) + ',' + str(self.rms) + ',' + str(fittype) + ',' + str(comments) + '\n'
+)
         file.write(message)
 
     def __get_comments(self):

@@ -1,5 +1,5 @@
 import numpy as np
-
+from astropy.convolution import convolve, Box1DKernel
 
 def smooth(spec, smooth_type=None, yfit= None):
     # if masking hasn't occured, neither has baselining.
@@ -16,8 +16,9 @@ def smooth(spec, smooth_type=None, yfit= None):
         window = []
         if smooth_type % 2 == 1:  # if the user selected an even int for boxcar smooth, make it odd by adding 1.
             smooth_type += 1
-        for i in range(int(smooth_type)):  # range
-            window.append(1 / float(smooth_type))
-        smo = np.convolve(smo, window, 'same')
+        smo = convolve(smo, Box1DKernel(smooth_type))
+        # for i in range(int(smooth_type)):  # range
+        #     window.append(1 / float(smooth_type))
+        # smo = np.convolve(smo, window, 'same')
     res = smo  # allows the plot to reflect the smoothing.
     return res
