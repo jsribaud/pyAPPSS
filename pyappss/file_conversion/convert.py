@@ -5,7 +5,7 @@ import glob
 from datetime import date
 import argparse
 import sys
-
+import pathlib
 
 #Parser and arguements, based upon code in reduce.py. Added to account for missing header information. This should be expandable to more than just AGBT 22A-430, with minimal effort.
 
@@ -27,10 +27,10 @@ else:
     instrument=''
 
 #Defining some directories to make the working space much, much cleaner.
-current_dir=os.getcwd()+'/'
-raw_dir=current_dir+'raw/'
-process_dir=current_dir+'processed/'
-os.makedirs(process_dir, exist_ok=True)
+current_dir=pathlib.PurePath(os.getcwd()+'/')
+raw_dir=current_dir / 'raw/'
+process_dir=current_dir / 'processed/'
+os.makedirs(str(process_dir), exist_ok=True)
 
 #Define the speed of light and other variables that will not change, in kilometer space.
 c=299792.458
@@ -41,13 +41,19 @@ date = today.strftime("%b-%d-%Y")
 
 #Create the glob, and work within the globspace to effectively write files en masse.
 #This retrieves all files in the raw directory and 
-image_list = glob.glob(raw_dir+'*.fits',recursive=True)
+image_list = glob.glob(str(raw_dir / '*.fits'),recursive=True)
 N_images = len(image_list)
 
+string_raw=str(pathlib.PurePath('raw'))
+if sys.platform.startswith('win32'):
+    morelength = len(string_raw) + 1
+else:
+    morelength = len(string_raw)
 for i in range(N_images):
 
-    root_name = image_list[i][image_list[i].rfind('/')+1:image_list[i].rfind('.fits')]
-    
+    root_name = image_list[i][image_list[i].rfind(string_raw)+morelength:image_list[i].rfind('.fits')]
+    outname='AGC'+root_name+'.fits'
+    print(outname)
     hdul = fits.open(image_list[i])
     #We need the second entry in the fits, since there needs to be a dummy primary hdu in all fits files, even if not an image.
     hdr = hdul[1].header
@@ -121,8 +127,7 @@ for i in range(N_images):
     hdul[1].header=hdr
     #Add a note about how the data was created!
     hdr['NOTE01']='This fits file was created using a translation program from GBT vegas data to the APPSS format, '+date
-
-    hdul.writeto(process_dir+'AGC'+root_name+'.fits',overwrite=True)
+    hdul.writeto(str(process_dir / (outname)),overwrite=True)
 
     hdul.close()
     
