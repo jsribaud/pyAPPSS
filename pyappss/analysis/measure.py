@@ -75,7 +75,7 @@ class Measure:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
         self.cid = None
-#Filename modified here, as well
+        # Filename modified here, as well
         if filename is not None:
             self.filename = 'AGC{:0}.fits'.format(filename)
             self.load()
@@ -96,12 +96,14 @@ class Measure:
         self.plot()
         if filename is not None:
             self.calcRMS()
-        #Adds in a choice to change fit if baseline/viewable data leads reducer to want some different fit type.
+        # Adds in a choice to change fit if baseline/viewable data leads reducer to want some different fit type.
         if noconfirm == False:
-            print('Do you want to keep your previously selected fit type?\nType "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type')
+            print(
+                'Do you want to keep your previously selected fit type?\nType "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type')
             response = input()
             if response != 'yes':
-                print('Please select your new fit type!\nThe accepted fit methods are: "gauss" for a gaussian, "twopeak" for a double-horned profile fit, or "trap" for a trapezoidal fit.\nOnce done, hit Enter, with no text input, to move on. Multiple fit options can still be selected in this step!')
+                print(
+                    'Please select your new fit type!\nThe accepted fit methods are: "gauss" for a gaussian, "twopeak" for a double-horned profile fit, or "trap" for a trapezoidal fit.\nOnce done, hit Enter, with no text input, to move on. Multiple fit options can still be selected in this step!')
                 chosen = False
                 twopeak = False
                 trap = False
@@ -109,16 +111,15 @@ class Measure:
                 while not chosen:
                     response = input()
                     if response == 'gauss':
-                        gauss=True
+                        gauss = True
                     elif response == 'twopeak':
-                        twopeak=True
+                        twopeak = True
                     elif response == 'trap':
-                        trap=True
+                        trap = True
                     elif response == '':
-                        chosen=True
+                        chosen = True
                     else:
                         print('Please enter a valid fit option!\nAccepted values are "gauss", "twopeak", and "trap"')
-
 
         if gauss:
             first_region = True
@@ -237,7 +238,7 @@ class Measure:
         global mark_regions
         global regions
         regions = []
-        #self.plot()
+        # self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
         if first_region == True:
@@ -247,17 +248,19 @@ class Measure:
         response = input(region_message)
         regions_good = False
         while not regions_good:
-            if response =='':
+            if response == '':
                 regions_good = True
             elif response == 'clear':
                 del regions
-                regions =[]
-                #regions.clear()
+                regions = []
+                # regions.clear()
                 self.plot()
                 mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-                response = input('Region cleared! Select a new region now. Press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n')
+                response = input(
+                    'Region cleared! Select a new region now. Press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n')
             else:
-                response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
+                response = input(
+                    'Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
         # self.fig.canvas.mpl_disconnect(mark_regions)
         regions.sort()
         v = list()
@@ -287,7 +290,7 @@ class Measure:
             self.ax.plot([ix, ix], [-100, 1e4], linestyle='--', linewidth=0.7, color='green')
             regions.append(ix)
             if len(regions) is 2:
-                 self.fig.canvas.mpl_disconnect(mark_regions)
+                self.fig.canvas.mpl_disconnect(mark_regions)
 
     def gaussfunc(self, v, s, v0, sigma):
         """
@@ -313,7 +316,7 @@ class Measure:
         # print('Area: ' + str(a))
         # print('Area Error: ' + str(aerr))
 
-        #self.__print_values()
+        # self.__print_values()
 
         self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
         self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
@@ -451,7 +454,7 @@ class Measure:
                                                                                                     righterror,
                                                                                                     rightvel,
                                                                                                     rightvel20, s, v)
-        #self.__print_values()
+        # self.__print_values()
 
         fig, ax = plt.subplots()
         ax.plot(v, s)
@@ -459,7 +462,7 @@ class Measure:
         ax.plot(v, rightcoef[1] + rightcoef[0] * v)
         ax.plot([vsys, vsys], [-100, 1e4], linestyle='--', color='red', linewidth=0.5)
         ax.plot([leftvel, rightvel], [0.25 * (leftmaxval + rightmaxval), 0.25 * (leftmaxval + rightmaxval)],
-                  linestyle='--', color='red', linewidth=0.5)
+                linestyle='--', color='red', linewidth=0.5)
         ax.set(xlim=(min(v), max(v)), ylim=(min(s), max(s)))
         ax.axhline(y=0, dashes=[5, 5])
         title = self.filename[1:-5]
@@ -602,7 +605,8 @@ class Measure:
         self.ax.axhline(y=0, dashes=[5, 5])
         title = self.filename[3:-5]
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
-        print("\n Select points around the emission\nTwo points should be on the outside slope of the left side, and two points should be on the outside slope of the right side.")
+        print(
+            "\n Select points around the emission\nTwo points should be on the outside slope of the left side, and two points should be on the outside slope of the right side.")
         global cid
         global coords_trap
         coords_trap = list()
@@ -656,37 +660,63 @@ class Measure:
         # print("Slope ", slope)
         # print("X-intercept ",  x_intercept)
         base_vel = np.array(x_intercept)
-        leftedge = []
-        rightedge = []
-        for i in range(len(self.vel)):
-            if self.vel[i] > base_vel[1]:
-                rightedge.append(i)
-            if self.vel[i] > base_vel[0]:
-                leftedge.append(i)
-        leftedge = max(leftedge) - 1
-        #This throws an error with max, and works correctly with min, so has been modified according.
-        rightedge=min(rightedge) + 1
-        #rightedge = max(rightedge) + 1
+
+        # from before 
+        # leftedge = []
+        # rightedge = []
+        # for i in range(len(self.vel)):
+        #     if self.vel[i] > base_vel[1]:
+        #         rightedge.append(i)
+        #     if self.vel[i] > base_vel[0]:
+        #         leftedge.append(i)
+        # leftedge = max(leftedge) - 1
+        # #This throws an error with max, and works correctly with min, so has been modified according.
+        # rightedge = min(rightedge) + 1
+        # #rightedge = max(rightedge) + 1
+
+        # print(leftedge, rightedge)
+        # print(self.vel[leftedge], self.vel[rightedge])
+
+        # new - improved from idl
+        # where returns 2 arrays: [0]condition met [1] otherwise
+        # potentially swap to the +- 1 (unsure rn)
+        # get the indices for the left and right edge velocities
+        rightedge = min(np.where(self.vel > base_vel[1])[0]) - 1
+        leftedge = max(np.where(self.vel < base_vel[0])[0]) + 1
+
         # Figure out the "peak" locations, i.e. where the spectrum hits a value of peak-rms
         # In the range given by the bases.
-        peakval = max(self.spec[rightedge:leftedge]) - self.rms
+        # peakval = max(self.spec[rightedge:leftedge]) - self.rms
+        # peak_vel = [(peakval - y[0]) / slope[0] + x[0], (peakval - y[2]) / slope[1] + x[2]]
+        # print("peak:", peakval, peak_vel)
+
+        peakval = max(self.spec[leftedge:rightedge]) - self.rms
         peak_vel = [(peakval - y[0]) / slope[0] + x[0], (peakval - y[2]) / slope[1] + x[2]]
         # print(peakval, peak_vel)
+
         # halfmax = [i*0.5 for i in base_vel] + [i*0.5 for i in peak_vel]
-        halfmax = []
-        for i in range(len(base_vel)):
-            halfmax.append((base_vel[i] + peak_vel[i]) * 0.5)
+        # halfmax = []
+        # for i in range(len(base_vel)):
+        #     halfmax.append((base_vel[i] + peak_vel[i]) * 0.5)
+
+        # fixed the list comprehension commented out above
+        halfmax = [(base_vel[i] + peak_vel[i]) * 0.5 for i in range(len(base_vel))]
         e_halfmax = np.mean(abs(self.rms / slope))
         W50 = abs(halfmax[1] - halfmax[0])
         W50err = e_halfmax
+
         # twentymax = [i*0.8 for i in base_vel] + [i*0.2 for i in peak_vel]
-        twentymax = []
-        for i in range(len(base_vel)):
-            twentymax.append(0.8 * base_vel[i] + 0.2 * peak_vel[i])
+        # twentymax = []
+        # for i in range(len(base_vel)):
+        #     twentymax.append(0.8 * base_vel[i] + 0.2 * peak_vel[i])
+
+        # again fixed list comp
+        twentymax = [(0.8 * base_vel[i]) + (0.2 * peak_vel[i]) for i in range(len(base_vel))]
         W20 = abs(twentymax[1] - twentymax[0])
         W20err = e_halfmax
         vsys = np.mean(halfmax)
         vsyserr = e_halfmax / np.sqrt(2)
+
         # y_intercept = [y[0] - slope[0] * x[0], y[2] - slope[1] * x[2]]
         self.ax.plot([base_vel[0], peak_vel[0], peak_vel[1], base_vel[1]], [0., peakval, peakval, 0.])
         self.ax.plot([vsys, vsys], [0, peakval], color='red', linestyle='--', linewidth=0.5)
@@ -694,8 +724,10 @@ class Measure:
         # Find the delta-v at the center channel
         centerchan = int((leftedge + rightedge) / 2.)
         deltav = abs(self.vel[centerchan + 1] - self.vel[centerchan - 1]) / 2.
+
         totflux = 0.  # Running total of the integrated flux density
-        for i in range(rightedge, leftedge):  # finding the area of the total region
+        
+        for i in range(leftedge, rightedge):  # finding the area of the total region
             deltav = abs(self.vel[i] - self.vel[i - 2]) / 2.
             totflux += deltav * self.spec[i]
         totflux = totflux / 1000.
@@ -707,6 +739,7 @@ class Measure:
         # print(Lambda)
         W50 = W50 - 2 * deltav * Lambda  # Subtract off noise+instrumental broadening effect
         W20 = W20 - 2 * deltav * Lambda
+
         # Recalculate SN based on new W50.
         SN = 1000 * totflux / W50 * np.sqrt(W50.clip(min=None, max=400.) / 20.) / self.rms
         return SN, W20, W20err, W50, W50err, fluxerr, totflux, vsys, vsyserr
@@ -770,23 +803,24 @@ class Measure:
         file_exists = os.path.exists('ReducedData.csv')
         if file_exists == False:
             file = open('ReducedData.csv', 'x')
-            message_info = ('AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,FitType,comments' +'\n')
+            message_info = (
+                        'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,FitType,comments' + '\n')
             file.write(message_info)
-        
+
         hdr = self.__get_header()
         file = open('ReducedData.csv', 'a')
-        #Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
+        # Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
         message = (str(self.filename[3:-5]) + ',' +
-        #Currently commented as GBT files lack attached galaxy names
-        #str(hdr[16]) + ',' +
-        str(hdr['RA']) + ',' + str(
-            hdr['DEC']) + ','
-        #Similarly, there is not a comparison between optical and radio coordinates.
-        #+ str(hdr[18]) + ',' + str(hdr[19]) + ','
-        + str(self.vsys) + ',' + str(self.w50) + ',' + str(
-            self.w50err) + ',' + str(self.w20) + ',' + str(self.flux) + ',' + str(self.fluxerr) + ',' + str(
-                self.SN) + ',' + str(self.rms) + ',' + str(fittype) + ',' + str(comments) + '\n'
-)
+                   # Currently commented as GBT files lack attached galaxy names
+                   # str(hdr[16]) + ',' +
+                   str(hdr['RA']) + ',' + str(
+                    hdr['DEC']) + ','
+                   # Similarly, there is not a comparison between optical and radio coordinates.
+                   # + str(hdr[18]) + ',' + str(hdr[19]) + ','
+                   + str(self.vsys) + ',' + str(self.w50) + ',' + str(
+                    self.w50err) + ',' + str(self.w20) + ',' + str(self.flux) + ',' + str(self.fluxerr) + ',' + str(
+                    self.SN) + ',' + str(self.rms) + ',' + str(fittype) + ',' + str(comments) + '\n'
+                   )
         file.write(message)
 
     def __get_comments(self):
