@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from analysis import smooth
+from . import smooth
 
 matplotlib.use('Qt5Agg')
 
@@ -150,12 +150,13 @@ class Baseline:
                 response = input()
         X = []
         self.m = []
+        regions.sort()
         for i in range(len(self.vel)):
             j = 0
             inRegion = False
-            while (j < len(regions) - 1):
-                if (self.vel[i] >= regions[j] and self.vel[i] <= regions[
-                    j + 1]):  # Used to set regions as between each pair of entries.
+            while j < len(regions) - 1:
+                # Used to set regions as between each pair of entries.
+                if self.vel[i] >= regions[j] and self.vel[i] <= regions[j + 1]:
                     X.append(self.vel[i])
                     inRegion = True
                 j = j + 2
@@ -184,7 +185,7 @@ class Baseline:
             regions.clear()
             self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
         # self.fig.canvas.mpl_disconnect(mark_regions)
-        regions.sort()
+        regions.sort()  # allows the user to insert the regions in any order
         v = list()
         s = list()
         for i in range(len(self.vel)):
@@ -216,17 +217,21 @@ class Baseline:
         called by calcpoly to determine best order, returns yfit list, rms and p values
         """
         if self.n == -1:
-            print(
-                'You have not masked this source yet. Please proceed with masking and call fitpoly() again when masking is complete.')
+            print('You have not masked this source yet. '
+                  'Please proceed with masking and call fitpoly() again when masking is complete.')
             self.__mask()  # if not already masked, call the mask function before proceeding
         else:
             if order != 0:
-                vel = []
-                spec = []
-                for i in range(len(self.m)):
-                    if self.m[i]:
-                        vel.append(self.vel[i])
-                        spec.append(self.spec[i])
+                # vel = []
+                # spec = []
+                # for i in range(len(self.m)):
+                #     if self.m[i]:
+                #         vel.append(self.vel[i])
+                #         spec.append(self.spec[i])
+
+                vel = [self.vel[i] for i in range(len(self.m)) if self.m[i]]
+                spec = [self.spec[i] for i in range(len(self.m)) if self.m[i]]
+
                 vel = np.asarray(vel)
                 spec = np.asarray(spec)
                 coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
@@ -243,18 +248,22 @@ class Baseline:
                 for i in range(len(self.vel)):
                     yval = 0
                     for j in range(order + 1):
-                        yval += (coeff[j] * (self.vel[i] ** (
-                                    order - j)))  # generating y-values based on the calculated coefficient array.
+                        yval += (coeff[j] * (self.vel[i] ** (order - j)))  # generating y-values based on the calculated coefficient array.
                     yfit.append(yval)
 
                 # calculate the rms
-                res = []  # list of baseline-subtracted spectrum values. Again, note that this is not the class variable, self.res. Also comes later.
-                rmsarr = []
-                for i in range(len(yfit)):
-                    res.append(self.spec[i] - yfit[i])  # subtracting the baseline
-                    np.asarray(res)
-                    if (self.m[i]):  # if part of the masked region, include it in the rms.
-                        rmsarr.append(res[i])
+                # res = []  # list of baseline-subtracted spectrum values. Again, note that this is not the class variable, self.res. Also comes later.
+                # rmsarr = []
+                # for i in range(len(yfit)):
+                #     res.append(self.spec[i] - yfit[i])  # subtracting the baseline
+                #     np.asarray(res)
+                #     if self.m[i]:  # if part of the masked region, include it in the rms.
+                #         rmsarr.append(res[i])
+
+                # reduces computation time significantly
+                res = self.spec - yfit  # list of baseline-subtracted spectrum values.
+                    # Again, note that this is not the class variable, self.res. Also comes later.
+                rmsarr = np.asarray([res[i] for i in range(len(yfit)) if self.m[i]])
                 rms = np.std(rmsarr)  # (number)
             else:
                 coeff = np.mean(self.spec)  # coefficient: fitted y val
@@ -275,14 +284,12 @@ class Baseline:
         cutoff = 0.05  # determines how much of a change is significant.
         rmsval = []  # array for rms vals
         pval = []  # list for p-values
-        rms = 0
-        p = 0
-        yfit = []
 
-        for order in range(omax, -1, -1):
+        for order in range(omax + 1):  # exclusive end
             (rms, p, yfit) = self.fitpoly(order)  # call fitpolylbw to get rms and p values
-            rmsval.insert(0, rms)  # putting each value at the front of the list so it's in the right order
-            pval.insert(0, p)
+            rmsval.append(rms)
+            pval.append(p)
+
         # find recommended order
         for i in range(omax):
             if recommend == -1 and pval[i] > cutoff:
@@ -290,6 +297,7 @@ class Baseline:
                 if recommend == -1:
                     recommend = 0
                 break
+
         if recommend == -1:
             recommend = omax  # if nothing else seems to work, recommend the 9th order polynomial
         return recommend, rmsval, pval
@@ -325,9 +333,8 @@ class Baseline:
                     accepted = True
                 else:
                     self.__plot()
-                    print(
-                        'Press Enter again to confirm this baseline fit. Type anything else and hit enter to try again.')
-                    response = input()
+                    response = input('Press Enter again to confirm this baseline fit.'
+                                     ' Type anything else and hit enter to try again.')
                     if response is '':
                         accepted = True
                     else:
