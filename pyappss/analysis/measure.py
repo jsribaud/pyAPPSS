@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
 from analysis import smooth
-
+from analysis import multigauss
 
 class Measure:
     """
@@ -45,7 +45,7 @@ class Measure:
     """
 
     def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False,
-                 vel=None, spec=None, rms=None, agc=None, noconfirm=False):
+                 vel=None, spec=None, rms=None, agc=None, noconfirm=False, overlay=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -56,7 +56,7 @@ class Measure:
         self.yfit = []
         self.res = []  # and smooth same variable
         self.rms = 0
-
+        self.overlay = overlay
         self.w50 = 0
         self.w50err = 0
         self.w20 = 0
@@ -90,9 +90,18 @@ class Measure:
             self.spec = spec
             self.rms = rms
             self.filename = 'AGC{:0}.fits'.format(int(agc))
-
+        length = len(vel)
         self.smoothed = True
-
+        if self.overlay == True:
+            self.y = []
+            self.x = []
+            #Setting these conditions so it can run directly. Maybe I should have defined these arrays in the gaussfilter function, however.
+            for i in range(1000, length-1001):
+                self.x.append(self.vel[i])
+                self.y.append(self.spec[i])
+            self.y = np.nan_to_num(self.y)
+            self.x = np.nan_to_num(self.x)
+            self.convolved = multigauss.ManyGauss.gaussfilter(self)
         self.plot()
         if filename is not None:
             self.calcRMS()
@@ -186,6 +195,8 @@ class Measure:
         self.ax.axhline(y=0, dashes=[5, 5])
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)")
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+        if self.overlay == True:
+            self.ax.plot(self.x, self.y, linewidth=1, color='orange')
         self.fig.canvas.draw()
         # plt.show()
 
@@ -418,6 +429,9 @@ class Measure:
             self.ax.axhline(y=0, dashes=[5, 5])
             title = self.filename[3:-5]
             self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
+            
+            if self.overlay == True:
+                self.ax.plot(self.x, self.y, linewidth=1, color='orange')
             # plt.show()
             response = input('Is this fit OK? Press \'Enter\' for Yes or any other key for No.')
             if response == '':
@@ -440,7 +454,9 @@ class Measure:
             self.ax.plot(v, s)
             self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)  # orange represents the left side
             self.ax.plot(v, rightcoef[1] + rightcoef[0] * v)  # red represents the right side
-
+            
+            if self.overlay == True:
+                self.ax.plot(self.x, self.y, linewidth=1, color='orange')
             # plt.show()
             response = input('Is this fit OK? Press \'Enter\' for Yes or any other key for No.')
             if response == '':
