@@ -349,8 +349,8 @@ class ManyGauss:
                         
                         #leftchan = bisect_left(self.x, regions[0])
                         #rightchan = bisect(self.x, regions[1])
-                        leftmax = np.where(self.gaussian_model == max(self.gaussian_model[leftchan-5, leftchan+5]))
-                        rightmax = np.where(self.gaussian_model == max(self.gaussian_model[rightchan-5, rightchan+5]))
+                        leftmax = np.where(self.gaussian_model == max(self.gaussian_model[leftchan[0]-5, leftchan[0]+5]))
+                        rightmax = np.where(self.gaussian_model == max(self.gaussian_model[rightchan[0]-5, rightchan[0]+5]))
                         del regions
                                                          
                         
