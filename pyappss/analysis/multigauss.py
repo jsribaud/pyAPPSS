@@ -321,7 +321,7 @@ class ManyGauss:
                 
                 if peakstruth:
                         global regions
-                        global setpeaks
+                        global set_bounds
                         regions = []
                         leftmax = []
                         rightmax = []
@@ -343,13 +343,14 @@ class ManyGauss:
                                                          '\nOnce done, hit Enter to continue, or type \'clear\' to clear peak selection and restart')
                                 else:
                                         response = input("\nPlease press Enter if the peaks are OK, or type \'clear\' and press enter to clear peak selection.\n")
-                        leftmax.append(regions[0])
-                        rightmax.append(regions[1])
+                        
+                        leftchan = np.where(self.x == regions[0])
+                        rightchan = np.where(self.x == regions[1])
                         
                         #leftchan = bisect_left(self.x, regions[0])
                         #rightchan = bisect(self.x, regions[1])
-                        #leftmax = np.where(self.gaussian_model == max(self.gaussian_model[leftchan-5, leftchan+5]))
-                        #rightmax = np.where(self.gaussian_model == max(self.gaussian_model[rightmax-5, rightmax+5]))
+                        leftmax = np.where(self.gaussian_model == max(self.gaussian_model[leftchan-5, leftchan+5]))
+                        rightmax = np.where(self.gaussian_model == max(self.gaussian_model[rightchan-5, rightchan+5]))
                         del regions
                                                          
                         
