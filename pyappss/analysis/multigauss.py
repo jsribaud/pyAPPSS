@@ -76,14 +76,24 @@ class ManyGauss:
                                          '\nType \'yes\' to manually define peaks, or \'no\' to finalize your values anyway.\n')
                         while bigerror:
                                 if response == 'yes':
-                                        self.plot(fitted=True)
+                                        oldratio = (self.w50err / self.w50)
+                                        self.plot(xmin=self.x[1999], xmax=self.x[4191],fitted=True)
                                         self.deltav, self.fluxerr, self.SN, self.flux, self.vsys, self.vsyserr, self.w20, self.w20err, self.w50, self.w50err = self.manygauss_calc(manualpeaks=True)
                                         self.__print_values()
                                         if self.w20err<(0.1 * self.w20) and self.w50err<(0.1 * self.w50):
-                                                bigerror = True
+                                                bigerror = False
                                         else:
-                                                response = input('\nYour error was not significantly helped; do you want to try again, or just continue?'
-                                                                 '\nType \'yes\' to try again, or \'no\' to finalize your values anyway.\n')
+                                                newratio = (self.w50err / self.w50)
+                                                if newratio < oldratio:
+                                                    percent_new = newratio * 100
+                                                    percent_old = oldratio *100
+                                                    response = response = input('\nWhile the proportion of error decreased, from ' + str(percent_old) + '% to ' + 
+                                                                                str(percent_new) +'%'
+                                                                                '\n your error is still greater than 10%. Do you want to try again, or just continue?'
+                                                                                '\nType \'yes\' to try again, or \'no\' to finalize your results anyway.\n')
+                                                else:
+                                                    response = input('\nYour error was not significantly helped; do you want to try again, or just continue?'
+                                                                     '\nType \'yes\' to try again, or \'no\' to finalize your values anyway.\n')
                                 elif response == 'no':
                                         bigerror = False
                                 else:
@@ -344,13 +354,22 @@ class ManyGauss:
                                 else:
                                         response = input("\nPlease press Enter if the peaks are OK, or type \'clear\' and press enter to clear peak selection.\n")
                         
-                        leftchan = np.where(self.x == regions[0])
-                        rightchan = np.where(self.x == regions[1])
+                        regions.sort()
+                        #leftmax = bisect_left(self.x, regions[0])
+                        #rightmax = bisect_left(self.x, regions[1])
                         
-                        #leftchan = bisect_left(self.x, regions[0])
-                        #rightchan = bisect(self.x, regions[1])
-                        leftmax = np.where(self.gaussian_model == max(self.gaussian_model[leftchan[0]-5, leftchan[0]+5]))
-                        rightmax = np.where(self.gaussian_model == max(self.gaussian_model[rightchan[0]-5, rightchan[0]+5]))
+                        leftchan = bisect_left(self.x, regions[0])
+                        rightchan = bisect(self.x, regions[1])
+                        #leftmax = np.where(self.gaussian_model == max(self.gaussian_model[(leftchan[0]-5):(leftchan[0]+5)]))
+                        #rightmax = np.where(self.gaussian_model == max(self.gaussian_model[(rightchan[0]-5):(rightchan[0]+5)]))
+                        leftmax = []
+                        rightmax = []
+                        print(leftchan)
+                        print(rightchan)
+                        leftmax_chan = bisect_left(self.gaussian_model, max(self.gaussian_model[(leftchan-5):(leftchan+5)]), lo=(leftchan-5), hi=(leftchan+5))
+                        rightmax_chan = bisect_left(self.gaussian_model, max(self.gaussian_model[(rightchan-5):(rightchan+5)]), lo=(rightchan-5), hi=(rightchan+5))
+                        leftmax.append(leftmax_chan)
+                        rightmax.append(rightmax_chan)
                         del regions
                                                          
                         
@@ -541,4 +560,4 @@ if __name__ == '__main__':
                 args.smo = 21
         b = baseline.Baseline(args.filename, smooth_int=args.smo, noconfirm=True)
         vel, spec, rms = b()
-        ManyGauss(vel=vel, spec=spec, rms=rms)
+        ManyGauss(vel=vel, spec=spec, rms=rms, agc=args.filename)
