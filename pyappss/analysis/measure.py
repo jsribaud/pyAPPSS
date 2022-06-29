@@ -196,8 +196,9 @@ class Measure:
             # ymax = max(self.smo)
 
         self.ax.axhline(y=0, dashes=[5, 5])
-        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)")
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+        title = self.filename[3:-5] # get just the AGC number
+        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
         self.fig.canvas.draw()
         # plt.show()
 
@@ -420,25 +421,18 @@ class Measure:
 
         # left fitting
         while left:
-            print('\nSelect the region around the left emission.')
+            print('\nSelect a region around one of the outer slopes of the profile.')
             first_region = False
             leftv, lefts = self.markregions(first_region)
-            fitedge = []
-            fitedge.append(min(leftv))
-            fitedge.append(max(leftv))
+            fitedge = [min(leftv), max(leftv)]
 
             # self.plot(None, None, min(self.res), max(self.res))
             leftcoef, leftvel, leftvel20, leftsigma, leftcov, leftmaxval, lefterror = self.edgefit(leftv, lefts, left,
                                                                                                    right)
             # plotting the fit and checking
-            plt.cla()
-            self.ax.plot(v, s, linewidth=1)
+            self.plot(min(v), max(v), min(s), max(s))
             self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
-            self.ax.set(ylim=(min(self.res), max(self.res)))
-            self.ax.axhline(y=0, dashes=[5, 5])
-            title = self.filename[3:-5]
-            self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
-            # plt.show()
+
             response = input('Is this fit OK? Press Enter to accept or any other key for No.')
             if response == '':
                 break  # move on to right fit. if not, keep looping through the left until an appropriate fit is found.
@@ -446,44 +440,46 @@ class Measure:
         right = True  # user fits right side of emission
         while right:
             first_region = False
-            print('\n Select the region around the right emission.')
+            print('\nSelect the region around the second slope of the profile.')
             rightv, rights = self.markregions(first_region)
-            fitedge = []
-            fitedge.append(min(rightv))
-            fitedge.append(max(rightv))
+            fitedge = [min(rightv), max(rightv)]
             rightcoef, rightvel, rightvel20, rightsigma, rightcov, rightmaxval, righterror = self.edgefit(rightv,
                                                                                                           rights, left,
                                                                                                           right)
             # plotting the fit and checking
-            plt.cla()
-            self.ax.set(ylim=(min(s), max(s)))
-            self.ax.plot(v, s)
+            self.plot(min(v), max(v), min(s), max(s))
             self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)  # orange represents the left side
             self.ax.plot(v, rightcoef[1] + rightcoef[0] * v)  # red represents the right side
 
-            # plt.show()
             response = input('Is this fit OK? Press Enter to accept or any other key for No.')
             if response == '':
                 break  # moves on to calculations. if not, keep looping through right fit until an appropriate fit is found.
+
+        # swap values if the user selected left/right backwards
+            # check the slopes from the coefs
+            # if left is negative, then it is the right slope
+        if leftcoef[0] < 0:
+            rightcoef, leftcoef = leftcoef, rightcoef
+            rightvel, leftvel = leftvel, rightvel
+            rightvel20, leftvel20 = leftvel20, rightvel20
+            rightsigma, leftsigma = leftsigma, rightsigma
+            rightcov, leftcov = leftcov, rightcov
+            rightmaxval, leftmaxval = leftmaxval, rightmaxval
+            righterror, lefterror = lefterror, righterror
+
         deltav, fluxerr, sn, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__twopeak_calc(leftcoef, lefterror,
                                                                                                     leftvel, leftvel20,
                                                                                                     rightcoef,
                                                                                                     righterror,
                                                                                                     rightvel,
                                                                                                     rightvel20, s, v)
-        # self.__print_values()
-
-        fig, ax = plt.subplots()
-        ax.plot(v, s)
-        ax.plot(v, leftcoef[1] + leftcoef[0] * v)
-        ax.plot(v, rightcoef[1] + rightcoef[0] * v)
-        ax.plot([vsys, vsys], [-100, 1e4], linestyle='--', color='red', linewidth=0.5)
-        ax.plot([leftvel, rightvel], [0.25 * (leftmaxval + rightmaxval), 0.25 * (leftmaxval + rightmaxval)],
+        # use measure's plot and add in the extra lines
+        self.plot(min(v), max(v), min(s), max(s))
+        self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
+        self.ax.plot(v, rightcoef[1] + rightcoef[0] * v)
+        self.ax.plot([vsys, vsys], [-100, 1e4], linestyle='--', color='red', linewidth=0.5)
+        self.ax.plot([leftvel, rightvel], [0.25 * (leftmaxval + rightmaxval), 0.25 * (leftmaxval + rightmaxval)],
                 linestyle='--', color='red', linewidth=0.5)
-        ax.set(xlim=(min(v), max(v)), ylim=(min(s), max(s)))
-        ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[1:-5]
-        ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
 
         self.w50 = w50
         self.w50err = w50err
@@ -534,8 +530,7 @@ class Measure:
         sn = 1000 * totflux / w50 * np.sqrt((w50.clip(min=None, max=400.) / 20.)) / self.rms
         return deltav, fluxerr, sn, totflux, vsys, vsyserr, w20, w20err, w50, w50err
 
-    def edgefit(self, v, s, left=None,
-                right=None):
+    def edgefit(self, v, s, left=None, right=None):
 
         # passing left and right booleans to indicate which side we are fitting.
         # edgefit works for both left and right fit.
