@@ -86,11 +86,14 @@ class Baseline:
         plt.cla()
         if not self.smoothed:
             self.res = smooth.smooth(self.spec)  # smooth the function (hanning) if not already done
-
+        props = dict(boxstyle='round', facecolor='skyblue')
+        self.ax.text(0.1, 1.05, "Baselining", transform=self.ax.transAxes, fontsize=14, bbox=props)
         self.ax.plot(self.vel, self.res, linewidth=1)
         self.ax.axhline(y=0, dashes=[5, 5])
-        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)")
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+        title = self.filename[3:-5]  # get just the AGC number
+        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
+
         self.fig.canvas.draw()
 
     # def __mask(self):  # interactive masking

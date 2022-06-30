@@ -67,6 +67,8 @@ class Measure:
         self.fluxerr = 0
         self.SN = 0
 
+        self.currfit = ""  # current fit type
+
         if not light_mode:
             plt.style.use('dark_background')
         plt.ion()
@@ -94,6 +96,9 @@ class Measure:
         self.smoothed = True
 
         self.plot()
+        props = dict(boxstyle='round', facecolor='crimson')
+        self.ax.text(0.1, 1.05, "Measuring", transform=self.ax.transAxes, fontsize=14, bbox=props)
+
         if filename is not None:
             self.calcRMS()
         # Adds in a choice to change fit if baseline/viewable data leads reducer to want some different fit type.
@@ -130,26 +135,24 @@ class Measure:
 
         if gauss:
             first_region = True
-            fittype = 'gauss'
+            self.currfit = 'gauss'
             self.gauss(first_region)
-            self.__write_file(self.__get_comments(), fittype)
+            self.__write_file(self.__get_comments(), self.currfit)
             input('Gaussian fit complete! Press Enter to end.\n')
 
         if twopeak:
-            fittype = 'twopeak'
+            self.currfit = 'twopeak'
             first_region = True
             self.twopeakfit(first_region)
-            self.__write_file(self.__get_comments(), fittype)
+            self.__write_file(self.__get_comments(), self.currfit)
             input('Two-peaked fit complete! Press Enter to end.\n')
-            plt.close()
 
         if trap:
-            fittype = 'trap'
+            self.currfit = 'trap'
             first_region = True
             self.trapezoidal_fit(first_region)
-            self.__write_file(self.__get_comments(), fittype)
+            self.__write_file(self.__get_comments(), self.currfit)
             input('Trapezoidal fit complete! Press Enter to end.\n')
-            plt.close()
 
     def load(self):
         """
@@ -197,10 +200,15 @@ class Measure:
 
         self.ax.axhline(y=0, dashes=[5, 5])
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+
+        # textbox to tell the user what step they are on
+        message = self.currfit
+        props = dict(boxstyle='round', facecolor='crimson')
+        self.ax.text(0.1, 1.05, message, transform=self.ax.transAxes, fontsize=14, bbox=props)
+
         title = self.filename[3:-5] # get just the AGC number
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
         self.fig.canvas.draw()
-        # plt.show()
 
     # def smooth(self, smoothtype=None):
     #     """
@@ -250,7 +258,7 @@ class Measure:
         global mark_regions
         global regions
         regions = []
-        # self.plot()
+        #self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
         if first_region == True:
@@ -318,29 +326,37 @@ class Measure:
         Method to fit a gaussian fit.
         Assigns the spectrum qualities to their instance variables.
         """
+        self.plot()
         print("Select the region for a gaussian fit.  It is recommended to use a wide region.")
-        vel, spec = self.markregions(first_region)
-        plt.cla()
-        a, aerr, fluxerr, peakmJy, popt, s, totflux, v, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(
-            vel, spec)
-        if self.rms != 0:
-            SN = peakmJy / self.rms
-        else:  # should not be 0. If it is 0 means the spectrum is not smoothed (rms value has not been calculated)
-            self.rms = np.std(self.spec)  # check with prof
-            SN = peakmJy / self.rms
-        # print(self.rms)
-        # print('Area: ' + str(a))
-        # print('Area Error: ' + str(aerr))
 
-        # self.__print_values()
+        # allow the user to restart if they didnt like it
+        gauss_good = False
+        while not gauss_good:
 
-        self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
-        self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
-                     'r')  # plotting the gaussian fit to the spectrum
-        # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
-        self.ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[3:-5]
-        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
+            v, s = self.markregions(first_region)
+            a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(v, s)
+
+            if self.rms != 0:
+                SN = peakmJy / self.rms
+            else:  # should not be 0. If it is 0 means the spectrum is not smoothed (rms value has not been calculated)
+                self.rms = np.std(self.spec)  # check with prof
+                SN = peakmJy / self.rms
+
+            # print(self.rms)
+            # print('Area: ' + str(a))
+            # print('Area Error: ' + str(aerr))
+            # self.__print_values()
+
+            self.plot(min(v), max(v), min(s), max(s))  # plotting v and s (notice how the graph zooms into this part of the spectrum)
+            self.ax.plot(v, self.gaussfunc(v, popt[0], popt[1], popt[2]), 'r')  # plotting the gaussian fit to the spectrum
+            # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
+
+            response = input('Is this fit OK? Press Enter to accept or any other key for No.')
+            if response == '':
+                gauss_good = True
+            else:
+                self.plot()
+
         # plt.pause(1000)
         self.w50 = w50
         self.w50err = w50err
@@ -393,7 +409,7 @@ class Measure:
         fluxerr = aerr / 1000  # from mJy to Jy
         # calculate signal to noise
         peakmJy = a / (popt[2] * np.sqrt(2 * np.pi))  # peakflux calculation: area/(sigma * sqrt(2pi))
-        return a, aerr, fluxerr, peakmJy, popt, spec, totflux, vel, vsys, vsyserr, w20, w20err, w50, w50err
+        return a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err
 
     def twopeakfit(self, first_region=True):
         """
@@ -412,6 +428,7 @@ class Measure:
         print("Please select the region for a two-peaked fit.")
         v, s = self.markregions(first_region)
         self.plot(min(v), max(v), min(s), max(s))
+
         left = True  # left fitting starts as true, so user fits the left side of the emission first.
         right = False  # user will fit right side of emission second.
         leftcoef = []
@@ -613,11 +630,8 @@ class Measure:
         self.plot()
         print("Please select the region for a trapezoidal fit.")
         v, s = self.markregions(first_region)
-        plt.cla()
-        self.ax.plot(v, s)
-        self.ax.axhline(y=0, dashes=[5, 5])
-        title = self.filename[3:-5]
-        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
+
+        self.plot(min(v), max(v), min(s), max(s))
 
         global cid
         global coords_trap
@@ -652,10 +666,8 @@ class Measure:
                 # reset the plot and restart the interaction
                 del coords_trap
                 coords_trap = []
-                plt.cla()
-                self.ax.plot(v, s)
-                self.ax.axhline(y=0, dashes=[5, 5])
-                self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
+
+                self.plot(min(v), max(v), min(s), max(s))
                 cid = self.fig.canvas.mpl_connect('button_press_event', self.__trapezoidal_onclick)
                 response = input(
                     "Points cleared! Select 4 new points. Press Enter when done or type \'clear\' and press Enter to clear the selection.\n")
