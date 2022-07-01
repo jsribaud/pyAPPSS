@@ -7,9 +7,11 @@ import os
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
+from astropy.modeling import models
+from astropy.modeling.models import custom_model
+from astropy.modeling import fitting
 
 from analysis import smooth
-
 
 class Measure:
     """
@@ -389,11 +391,28 @@ class Measure:
         peak = max(spec)  # peak of the spectrum
         v0 = np.argmax(spec)  # finding the location of the peak
         plt.style.use('dark_background')
-        mean = sum(vel * spec) / sum(spec)
-        sigma = np.sqrt(abs(sum(spec * (vel - mean) ** 2) / sum(spec)))
+        #mean = sum(vel * spec) / sum(spec)
+        #sigma = np.sqrt(abs(sum(spec * (vel - mean) ** 2) / sum(spec)))
         # fitting the gaussian to the spectrum
-        popt, pcov = opt.curve_fit(self.gaussfunc, vel, spec, p0=[peak, mean, sigma])
-        unc = np.diag(pcov)  # uncertainty array
+        #popt, pcov = opt.curve_fit(self.gaussfunc, vel, spec, p0=[peak, mean, sigma])
+        
+        #Attempt to use astropy's implementation of least squares rather than curve fit
+        
+        fitter = fitting.TRFLSQFitter(calc_uncertainties=True)
+        gauss_model = models.Gaussian1D(amplitude=peak, mean=vel[v0])
+        
+        gaussfit = fitter(gauss_model, vel, spec)
+        
+        popt = []
+        unc = []
+        popt.append(gaussfit.amplitude)
+        popt.append(gaussfit.mean)
+        popt.append(gaussfit.stddev)
+        unc.append(gaussfit.stds[0])
+        unc.append(gaussfit.stds[1])
+        unc.append(gaussfit.stds[2])
+        pcov = gaussfit.cov_matrix
+        #unc = np.diag(pcov)  # uncertainty array
         # calculate area
         a = abs(popt[0] * popt[2] * np.sqrt(2 * np.pi))
         aerr = a * np.sqrt((unc[0] ** 2) / popt[0] ** 2 + (unc[2] ** 2) / popt[2] ** 2)
