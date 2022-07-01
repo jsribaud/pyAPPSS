@@ -154,6 +154,8 @@ class Measure:
             self.__write_file(self.__get_comments(), self.currfit)
             input('Trapezoidal fit complete! Press Enter to end.\n')
 
+        plt.close()
+
     def load(self):
         """
         Reads the FITS file and loads the data into the arrays.

@@ -28,7 +28,7 @@ class Baseline:
     def __init__(self, filename, smooth_int, noconfirm=False):
         # Filename modified: to AGCxxxxx.fits
         # May align more favorably with desired format, may not. Matches convert.py naming.
-        self.filename = 'AGC{:0}.fits'.format(filename)
+        self.filename = 'AGC{}.fits'.format(filename)
         self.smoothed = False
         self.n = -1
         self.m = []
