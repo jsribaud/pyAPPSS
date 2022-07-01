@@ -25,7 +25,7 @@ class Baseline:
     AGC number of the galaxy, e.g, 104365
     """
 
-    def __init__(self, filename, smooth_int, noconfirm=False):
+    def __init__(self, filename, smooth_int, noconfirm=False, dark_mode=False):
         # Filename modified: to AGCxxxxx.fits
         # May align more favorably with desired format, may not. Matches convert.py naming.
         self.filename = 'AGC{}.fits'.format(filename)
@@ -45,8 +45,11 @@ class Baseline:
         self.res = self.smo
         self.smoothed = True
 
+        if dark_mode:
+            plt.style.use('dark_background')
         plt.ion()
         plt.rcParams["figure.figsize"] = (10, 6)
+
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
         self.cid = None

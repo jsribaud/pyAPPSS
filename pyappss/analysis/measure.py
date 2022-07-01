@@ -44,7 +44,7 @@ class Measure:
 
     """
 
-    def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, light_mode=False,
+    def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, dark_mode=False,
                  vel=None, spec=None, rms=None, agc=None, noconfirm=False):
         self.base = True  # for now
         self.smoothed = False
@@ -69,7 +69,7 @@ class Measure:
 
         self.currfit = ""  # current fit type
 
-        if not light_mode:
+        if dark_mode:
             plt.style.use('dark_background')
         plt.ion()
         plt.rcParams["figure.figsize"] = (10, 6)
@@ -91,7 +91,7 @@ class Measure:
             self.res = spec
             self.spec = spec
             self.rms = rms
-            self.filename = 'AGC{:0}.fits'.format(int(agc))
+            self.filename = 'AGC{}.fits'.format(agc)
 
         self.smoothed = True
 
@@ -871,9 +871,9 @@ if __name__ == '__main__':
     parser.add_argument('-gauss', action='store_true', help='Do a Gaussian fit of the spectrum')
     parser.add_argument('-twopeak', action='store_true', help='Do a Two Peak fit of the spectrum')
     parser.add_argument('-trap', action='store_true', help='Do a Trapezoidal fit of the spectrum')
-    parser.add_argument('-pub', action='store_true', help='Plot in Light Mode which is good for publication')
+    parser.add_argument('-dark_mode', action='store_true', help='Enable dark mode, but not recommended for publication.')
 
     args = parser.parse_args()
 
     Measure(filename=args.filename, smo=args.smo, gauss=args.gauss, twopeak=args.twopeak, trap=args.trap,
-            light_mode=args.pub)
+            dark_mode=args.dark_mode)
