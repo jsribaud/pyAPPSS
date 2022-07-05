@@ -8,7 +8,7 @@ matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
-from analysis import smooth
+from pyappss.analysis import smooth
 
 
 class Measure:
