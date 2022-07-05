@@ -330,37 +330,28 @@ class Measure:
         Method to fit a gaussian fit.
         Assigns the spectrum qualities to their instance variables.
         """
-        self.plot()
-        print("Select the region for a gaussian fit.  It is recommended to use a wide region.")
+        vel, spec = self.markregions(first_region)
+        plt.cla()
+        a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(
+            vel, spec)
+        if self.rms != 0:
+            SN = peakmJy / self.rms
+        else:  # should not be 0. If it is 0 means the spectrum is not smoothed (rms value has not been calculated)
+            self.rms = np.std(self.spec)  # check with prof
+            SN = peakmJy / self.rms
+        # print(self.rms)
+        # print('Area: ' + str(a))
+        # print('Area Error: ' + str(aerr))
 
-        # allow the user to restart if they didnt like it
-        gauss_good = False
-        while not gauss_good:
+        #self.__print_values()
 
-            v, s = self.markregions(first_region)
-            a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(v, s)
-
-            if self.rms != 0:
-                SN = peakmJy / self.rms
-            else:  # should not be 0. If it is 0 means the spectrum is not smoothed (rms value has not been calculated)
-                self.rms = np.std(self.spec)  # check with prof
-                SN = peakmJy / self.rms
-
-            # print(self.rms)
-            # print('Area: ' + str(a))
-            # print('Area Error: ' + str(aerr))
-            # self.__print_values()
-
-            self.plot(min(v), max(v), min(s), max(s))  # plotting v and s (notice how the graph zooms into this part of the spectrum)
-            self.ax.plot(v, self.gaussfunc(v, popt[0], popt[1], popt[2]), 'r')  # plotting the gaussian fit to the spectrum
-            # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
-
-            response = input('Is this fit OK? Press Enter to accept or any other key for No.')
-            if response == '':
-                gauss_good = True
-            else:
-                self.plot()
-
+        self.ax.plot(vel, spec)  # plotting v and s (notice how the graph zooms into this part of the spectrum)
+        self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
+                     'r')  # plotting the gaussian fit to the spectrum
+        # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
+        self.ax.axhline(y=0, dashes=[5, 5])
+        title = self.filename[3:-5]
+        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
         # plt.pause(1000)
         self.w50 = w50
         self.w50err = w50err
@@ -423,7 +414,7 @@ class Measure:
         w20 = abs(2 * np.sqrt(2 * np.log(5)) * popt[2])
         w20err = 2 * np.sqrt(2 * np.log(5)) * np.sqrt(abs(pcov[2, 2]))
         # calculate the central velocity
-        vsys = popt[1]  # central velocity occurs at the peak for gaussian
+        vsys = popt[1].value  # central velocity occurs at the peak for gaussian
         vsyserr = np.sqrt(abs(pcov[1, 1]))
         # calculate the flux under the curve
         totflux = a / 1000  # from mJy to Jy
