@@ -25,13 +25,13 @@ setup_keywords = dict()
 setup_keywords['name'] = 'pyAPPSS'
 setup_keywords['description'] = 'APPSS'
 setup_keywords['author'] = 'Ribaudo et al.'
-setup_keywords['author_email'] = 'tbd'
+setup_keywords['author_email'] = 'tbd@email.com'
 setup_keywords['license'] = 'BSD'
 setup_keywords['url'] = 'https://github.com/jsribaud/pyAPPSS'
 #
 # END OF SETTINGS THAT NEED TO BE CHANGED.
 #
-setup_keywords['version'] = '0.1.dev0' #get_version(setup_keywords['name'])
+setup_keywords['version'] = '0.1.0b4' #get_version(setup_keywords['name'])
 #
 # Use README.rst as long_description.
 #
@@ -61,7 +61,7 @@ setup_keywords['tests_require']=['pytest']
 
 # Autogenerate command-line scripts.
 #
-# setup_keywords['entry_points'] = {'console_scripts':['desiInstall = desiutil.install.main:main']}
+setup_keywords['entry_points'] = {'console_scripts': ['pyappss_reduce = pyappss.scripts.reduce:reduce']}
 
 #
 # Add internal data directories.
