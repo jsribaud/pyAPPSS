@@ -31,7 +31,7 @@ setup_keywords['url'] = 'https://github.com/jsribaud/pyAPPSS'
 #
 # END OF SETTINGS THAT NEED TO BE CHANGED.
 #
-setup_keywords['version'] = '0.1.0b4' #get_version(setup_keywords['name'])
+setup_keywords['version'] = '0.1.0b7' #get_version(setup_keywords['name'])
 #
 # Use README.rst as long_description.
 #
@@ -61,7 +61,8 @@ setup_keywords['tests_require']=['pytest']
 
 # Autogenerate command-line scripts.
 #
-setup_keywords['entry_points'] = {'console_scripts': ['pyappss_reduce = pyappss.scripts.reduce:reduce']}
+setup_keywords['entry_points'] = {'console_scripts': ['pyappss_reduce = pyappss.scripts.reduce:reduce',
+                                                      'pyappss_convert = pyappss.file_conversion.convert:convert']}
 
 #
 # Add internal data directories.
