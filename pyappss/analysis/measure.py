@@ -336,6 +336,7 @@ class Measure:
         while not gauss_good:
 
             v, s = self.markregions(first_region)
+
             a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(v, s)
 
             if self.rms != 0:
@@ -348,9 +349,8 @@ class Measure:
             # print('Area: ' + str(a))
             # print('Area Error: ' + str(aerr))
             # self.__print_values()
-
             self.plot(min(v), max(v), min(s), max(s))  # plotting v and s (notice how the graph zooms into this part of the spectrum)
-            self.ax.plot(v, self.gaussfunc(v, popt[0], popt[1], popt[2]), 'r')  # plotting the gaussian fit to the spectrum
+            self.ax.plot(v, self.gaussfunc(v, popt[0], popt[1], popt[2]), color='r')  # plotting the gaussian fit to the spectrum
             # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
 
             response = input('Is this fit OK? Press Enter to accept or any other key for No.')
@@ -388,7 +388,6 @@ class Measure:
 
         peak = max(spec)  # peak of the spectrum
         v0 = np.argmax(spec)  # finding the location of the peak
-        plt.style.use('dark_background')
         mean = sum(vel * spec) / sum(spec)
         sigma = np.sqrt(abs(sum(spec * (vel - mean) ** 2) / sum(spec)))
         # fitting the gaussian to the spectrum
