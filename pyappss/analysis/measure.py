@@ -330,24 +330,34 @@ class Measure:
         Method to fit a gaussian fit.
         Assigns the spectrum qualities to their instance variables.
         """
-        vel, spec = self.markregions(first_region)
-        plt.cla()
-        a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(
-            vel, spec)
-        if self.rms != 0:
-            SN = peakmJy / self.rms
-        else:  # should not be 0. If it is 0 means the spectrum is not smoothed (rms value has not been calculated)
-            self.rms = np.std(self.spec)  # check with prof
-            SN = peakmJy / self.rms
-        # print(self.rms)
-        # print('Area: ' + str(a))
-        # print('Area Error: ' + str(aerr))
+        self.plot()
 
-        #self.__print_values()
+        gauss_good = False
+        while not gauss_good:
+            v, s = self.markregions(first_region)
+            self.plot()
+            a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(v, s)
+            if self.rms != 0:
+                SN = peakmJy / self.rms
+            else:  # should not be 0. If it is 0 means the spectrum is not smoothed (rms value has not been calculated)
+                self.rms = np.std(self.spec)  # check with prof
+                SN = peakmJy / self.rms
+            # print(self.rms)
+            # print('Area: ' + str(a))
+            # print('Area Error: ' + str(aerr))
 
-        self.ax.plot(vel, self.gaussfunc(vel, popt[0], popt[1], popt[2]),
-                     'r')  # plotting the gaussian fit to the spectrum
-        # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
+            #self.__print_values()
+
+            self.plot(min(v), max(v), min(s), max(s))
+            self.ax.plot(v, self.gaussfunc(v, popt[0], popt[1], popt[2]), 'r')  # plotting the gaussian fit to the spectrum
+            # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
+
+            response = input("Is this fit OK? Press Enter to accept or any other key for No.")
+            if response == "":
+                gauss_good = True
+            else:
+                self.plot()
+
         # plt.pause(1000)
         self.w50 = w50
         self.w50err = w50err
