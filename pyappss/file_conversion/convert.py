@@ -50,7 +50,7 @@ def convert():
     if sys.platform.startswith('win32'):
         morelength = len(string_raw) + 1
     else:
-        morelength = len(string_raw)
+        morelength = len(string_raw) + 1
     for i in range(N_images):
         root_name = image_list[i][image_list[i].rfind(string_raw) + morelength:image_list[i].rfind('.fits')]
         outname = 'AGC' + root_name + '.fits'
