@@ -10,15 +10,14 @@ from astropy.convolution import convolve, convolve_fft, Gaussian1DKernel
 
 from bisect import bisect, bisect_left
 from analysis import baseline
+from analysis import autozeros
 
 import os
 import argparse
-
-
-# from scipy.optimization import optimize
+#from scipy.optimization import optimize
 
 class ManyGauss:
-    def __init__(self, vel=None, spec=None, rms=None, agc=None):
+    def __init__(self, vel=None, spec=None, rms=None, agc=None, auto=True):
         self.filename = 'AGC{:0}.fits'.format(int(agc))
         self.x = []
         self.y = []
@@ -27,18 +26,20 @@ class ManyGauss:
         self.rms = rms
         self.convolved = []
         self.boxcar = True
+        automation = auto
+        length = len(spec)
 
         # Clipping 1000 channels in either direction to ignore oddities at the ends.
-        length = len(spec)
-        for i in range(1000, length - 1001):
-            self.y.append(self.spec[i])
-            self.x.append(self.vel[i])
+        for i in range(1000, length-1001):
+
+                self.y.append(self.spec[i])
+                self.x.append(self.vel[i])
         # Should not be an issue with the GBT data, but this double-checks for any NAN values which can completely mess up the convolution and fit.
         self.y = np.nan_to_num(self.y)
         self.x = np.nan_to_num(self.x)
 
         # Commented because there's no real need to have alternate deviations
-        # self.dev = int(input('\nPlease enter the standard deviation for the gaussian convolution.'
+        #self.dev = int(input('\nPlease enter the standard deviation for the gaussian convolution.'
         #                     '\nRecommended is 10 - this value works well for all tested galaxies. Other values have not been tested.\n'))
         plt.ion()
         plt.rcParams["figure.figsize"] = (15, 9)
@@ -47,7 +48,7 @@ class ManyGauss:
 
         self.convolved = self.gaussfilter()
         self.plot()
-        self.manygaussfitter()
+        self.manygaussfitter(auto=automation)
 
         self.plot(fitted=True)
 
@@ -59,7 +60,7 @@ class ManyGauss:
             try:
                 niter = int(response)
                 if niter > 500:
-                    self.manygaussfitter(iterations=niter)
+                    self.manygaussfitter(iterations=niter, auto=automation)
                     self.plot(fitted=True)
                 else:
                     print('A low number of iterations will not help! Continuing with current fit.')
@@ -187,19 +188,24 @@ class ManyGauss:
 
         return convolved
 
-    def manygaussfitter(self, iterations=500):
+    def manygaussfitter(self, iterations=500, auto=False):
         self.fitter = fitting.TRFLSQFitter(calc_uncertainties=True)
         length = len(self.x)
 
-        global regions
-        global set_regions
+        if auto == False:
+            global regions
+            global set_regions
 
-        regions = []
-        lines = []
+            regions = []
+            lines = []
 
-        v, s = self.region_selection()
-        vel1 = v[0]
-        vel2 = v[len(v) - 1]
+            v, s = self.region_selection()
+            vel1 = v[0]
+            vel2 = v[len(v) - 1]
+
+        else:
+            vel1, vel2 = autozeros.auto_zero(self.x, self.y, clipped=True)
+
         pos1 = bisect_left(self.x, vel1)
         pos2 = bisect(self.x, vel2)
         deltav = (abs((self.x[pos1] - self.x[pos1 - 2]) / 2) + abs((self.x[pos2] - self.x[pos2 - 2]) / 2)) / 2

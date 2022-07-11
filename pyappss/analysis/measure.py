@@ -10,9 +10,11 @@ import scipy.optimize as opt
 from astropy.modeling import models
 from astropy.modeling.models import custom_model
 from astropy.modeling import fitting
+from bisect import bisect, bisect_left
 
 from analysis import smooth
 from analysis import multigauss
+from analysis import autozeros
 
 class Measure:
     """
@@ -48,7 +50,7 @@ class Measure:
     """
 
     def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, dark_mode=False,
-                 vel=None, spec=None, rms=None, agc=None, noconfirm=False, overlay=False):
+                 vel=None, spec=None, rms=None, agc=None, noconfirm=False, overlay=False, auto=True):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -73,6 +75,8 @@ class Measure:
 
         self.currfit = ""  # current fit type
 
+        automation = auto
+        
         if dark_mode:
             plt.style.use('dark_background')
         plt.ion()
@@ -152,7 +156,7 @@ class Measure:
         if gauss:
             first_region = True
             self.currfit = 'gauss'
-            self.gauss(first_region)
+            self.gauss(first_region, auto=automation)
             self.__write_file(self.__get_comments(), self.currfit)
             input('Gaussian fit complete! Press Enter to end.\n')
 
@@ -269,7 +273,7 @@ class Measure:
         self.rms = np.std(s)
         print('\n RMS of Spectrum: ', self.rms)
 
-    def markregions(self, first_region=True):
+    def markregions(self, first_region=True, auto=False, gauss=False):
         """
         Method to interactively select regions on the spectrum
         :return: v, the velocity values in the region
@@ -279,36 +283,52 @@ class Measure:
         global mark_regions
         global regions
         regions = []
+        mark_regions = []
         #self.plot()
-
-        mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-        if first_region == True:
-            region_message = 'Select a region free of RFI that has the source within it.\n' \
-                             'Once done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
-        else:
-            region_message = 'Once done, press Enter to accept the region, or type \'clear\' and press Enter to clear region selection.\n'
-        response = input(region_message)
-        regions_good = False
-        while not regions_good:
-            if response == '':
-                if len(regions) < 2:
-                    response = input("Please complete the region.\n")
-                else:
-                    regions_good = True
-            elif response == 'clear':
-                del regions
-                regions = []
-                # regions.clear()
-                self.plot()
-                mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-                response = input('Region cleared! Select a new region now. Press Enter if the region is OK, '
-                                 'or type "clear" and press Enter to clear region selection.\n')
+        if not auto:
+            mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+            if first_region == True:
+                region_message = 'Select a region free of RFI that has the source within it.' \
+                                  '\nOnce done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
             else:
-                response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
-        # self.fig.canvas.mpl_disconnect(mark_regions)
+                region_message = 'Once done, press Enter to accept the region, or type \'clear\' and press Enter to clear region selection.\n'
+                response = input(region_message)
+                regions_good = False
+                while not regions_good:
+                    if response == '':
+                        if len(regions) < 2:
+                            response = input("Please complete the region.\n")
+                        else:
+                            regions_good = True
+                    elif response == 'clear':
+                        del regions
+                        regions = []
+                        # regions.clear()
+                        self.plot()
+                        mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+                        response = input('Region cleared! Select a new region now. Press Enter if the region is OK, '
+                                         'or type "clear" and press Enter to clear region selection.\n')
+                    else:
+                        response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
+                        # self.fig.canvas.mpl_disconnect(mark_regions)
+        else:
+            vel1 , vel2 = autozeros.auto_zero(self.vel, self.spec)
+            regions.append(vel1)
+            regions.append(vel2)
+    
         regions.sort()
         v = list()
         s = list()
+        if gauss and auto:
+            # There becomes a need to construct these faked zero arrays when using the auto zeros, as the gaussian fit otherwise has issues
+            pos1 = bisect_left(self.vel, vel1)
+            pos2 = bisect(self.vel, vel2)
+            deltav = (abs((self.vel[pos1] - self.vel[pos1 - 2])/2) + abs((self.vel[pos2] - self.vel[pos2 - 2])/2)) / 2
+            for i in range (100):
+                fakevel = (vel1 - 100*deltav) + i * deltav 
+                v.append(fakevel)
+                s.append(0)
+            
         for i in range(len(self.vel)):
             for j in range(len(regions) - 1):
                 # constructing v and s lists if they are within the selected region.
@@ -319,6 +339,11 @@ class Measure:
                     else:
                         s.append(self.spec[i])
         # changing v and s into numpy arrays so calculations become shorter.
+        if gauss and auto:
+            for i in range (1, 100):
+                fakevel = (vel2) + i * deltav 
+                v.append(fakevel)
+                s.append(0)
 
         del mark_regions, regions
         v = np.asarray(v)
@@ -342,7 +367,7 @@ class Measure:
         """
         return s * np.exp(-(v - v0) ** 2 / (2 * sigma ** 2))
 
-    def gauss(self, first_region=True):
+    def gauss(self, first_region=True, auto=False):
         """
         Method to fit a gaussian fit.
         Assigns the spectrum qualities to their instance variables.
@@ -351,7 +376,7 @@ class Measure:
 
         gauss_good = False
         while not gauss_good:
-            v, s = self.markregions(first_region)
+            v, s = self.markregions(first_region, auto=auto, gauss=True)
             self.plot()
             a, aerr, fluxerr, peakmJy, popt, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__gaussian_fit(v, s)
             if self.rms != 0:

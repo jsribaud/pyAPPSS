@@ -20,11 +20,11 @@ def reduce():
                         help='Enable dark mode, but not recommended for publication.')
     parser.add_argument('-noconfirm', action='store_true',
                         help='Additional option to remove confirmations, both for baseline selection and for fit model choice')
-
     # new routine!
     parser.add_argument('-multigauss', action='store_true',
                         help='Do a Many Gaussian fit of the spectrum, calculated near-automatically. As a note, this does take noticeably longer than other methods, typically.')
     parser.add_argument('-overlay', action='store_true', help='Additional option to display a helpful filter overlay when plotting during main measure routine')
+    parser.add_argument('-noauto', action='store_true', help='No automation of everything possible, fits are primarily manual')
     args = parser.parse_args()
 
     agcs = args.filename
@@ -36,7 +36,12 @@ def reduce():
     noconfirm = args.noconfirm
     mgauss = args.multigauss
     overlay = args.overlay
+    noauto = args.noauto
 
+    if noauto:
+        auto = False
+    else:
+        auto = True
 
     for agc in agcs:
 
@@ -46,7 +51,7 @@ def reduce():
                 b = baseline.Baseline(agc, smooth_int=smo, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, dark_mode=dark_mode,
-                                vel=vel, spec=spec, rms=rms, agc=agc, noconfirm=noconfirm, overlay=overlay)
+                                vel=vel, spec=spec, rms=rms, agc=agc, noconfirm=noconfirm, overlay=overlay, auto=auto)
 
             if mgauss:
                 if smo is None:
@@ -57,7 +62,7 @@ def reduce():
                 # odd fix for now - only weird for people who do a fit type above and then try multigauss
                 b = baseline.Baseline(agc, smooth_int=smo, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
-                multigauss.ManyGauss(vel=vel, spec=spec, rms=rms, agc=agc)
+                multigauss.ManyGauss(vel=vel, spec=spec, rms=rms, agc=agc, auto=auto)
 
         except IOError:
             print("Could not open AGC{}.fits\n".format(agc))
