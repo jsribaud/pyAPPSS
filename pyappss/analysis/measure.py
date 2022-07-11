@@ -11,7 +11,8 @@ from astropy.modeling import models
 from astropy.modeling.models import custom_model
 from astropy.modeling import fitting
 
-from . import smooth
+from analysis import smooth
+from analysis import multigauss
 
 class Measure:
     """
@@ -47,7 +48,7 @@ class Measure:
     """
 
     def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, dark_mode=False,
-                 vel=None, spec=None, rms=None, agc=None, noconfirm=False):
+                 vel=None, spec=None, rms=None, agc=None, noconfirm=False, overlay=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -58,6 +59,7 @@ class Measure:
         self.yfit = []
         self.res = []  # and smooth same variable
         self.rms = 0
+        self.overlay = overlay
 
         self.w50 = 0
         self.w50err = 0
@@ -96,6 +98,18 @@ class Measure:
             self.filename = 'AGC{}.fits'.format(agc)
 
         self.smoothed = True
+
+        length = len(vel)
+        if self.overlay == True:
+            self.y = []
+            self.x = []
+            # Setting these conditions so it can run directly. Maybe I should have defined these arrays in the gaussfilter function, however.
+            for i in range(1000, length - 1001):
+                self.x.append(self.vel[i])
+                self.y.append(self.spec[i])
+            self.y = np.nan_to_num(self.y)
+            self.x = np.nan_to_num(self.x)
+            self.convolved = multigauss.ManyGauss.gaussfilter(self)
 
         self.plot()
         props = dict(boxstyle='round', facecolor='crimson')
@@ -205,12 +219,15 @@ class Measure:
         self.ax.axhline(y=0, dashes=[5, 5])
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
 
+        if self.overlay == True:
+            self.ax.plot(self.x, self.y, linewidth=1, color='orange')
+
         # textbox to tell the user what step they are on
         message = self.currfit
         props = dict(boxstyle='round', facecolor='crimson')
         self.ax.text(0.1, 1.05, message, transform=self.ax.transAxes, fontsize=14, bbox=props)
 
-        title = self.filename[3:-5] # get just the AGC number
+        title = self.filename[3:-5]  # get just the AGC number
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
         self.fig.canvas.draw()
 
