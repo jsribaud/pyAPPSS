@@ -5,7 +5,8 @@ import argparse
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from . import smooth
+
+from pyappss.analysis import smooth
 
 matplotlib.use('Qt5Agg')
 

@@ -11,8 +11,8 @@ from astropy.modeling import models
 from astropy.modeling.models import custom_model
 from astropy.modeling import fitting
 
-from analysis import smooth
-from analysis import multigauss
+from pyappss.analysis import smooth
+from pyappss.analysis import multigauss
 
 class Measure:
     """

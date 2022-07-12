@@ -9,7 +9,7 @@ from astropy import units as u
 from astropy.convolution import convolve, convolve_fft, Gaussian1DKernel
 
 from bisect import bisect, bisect_left
-from analysis import baseline
+from pyappss.analysis import baseline
 
 import os
 import argparse
@@ -41,7 +41,7 @@ class ManyGauss:
         # self.dev = int(input('\nPlease enter the standard deviation for the gaussian convolution.'
         #                     '\nRecommended is 10 - this value works well for all tested galaxies. Other values have not been tested.\n'))
         plt.ion()
-        plt.rcParams["figure.figsize"] = (15, 9)
+        plt.rcParams["figure.figsize"] = (10, 6)
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot()
 
@@ -145,7 +145,10 @@ class ManyGauss:
         regions_good = False
         while not regions_good:
             if response == '':
-                regions_good = True
+                if len(regions) < 2:
+                    response = input("Please complete the region.\n")
+                else:
+                    regions_good = True
             elif response == 'clear':
                 del regions
                 regions = []
@@ -198,6 +201,10 @@ class ManyGauss:
         lines = []
 
         v, s = self.region_selection()
+
+        # alert the user this part takes some time
+        print("Fitting gaussians. Please wait.")
+
         vel1 = v[0]
         vel2 = v[len(v) - 1]
         pos1 = bisect_left(self.x, vel1)
@@ -250,11 +257,12 @@ class ManyGauss:
     def manygauss_calc(self, manualpeaks=False):
         peakstruth = manualpeaks
         midchan_l, midchan_r = self.gauss_edges(manualpeaks=peakstruth)
-        leftvel50, leftvel20, leftvelerr, leftcoef = self.gauss_edgefit(midchan_l)
-        rightvel50, rightvel20, rightvelerr, rightcoef = self.gauss_edgefit(midchan_r)
+        leftvel50, leftvel20, leftmaxval, leftvelerr, leftcoef = self.gauss_edgefit(midchan_l)
+        rightvel50, rightvel20, rightmaxval, rightvelerr, rightcoef = self.gauss_edgefit(midchan_r)
 
         self.ax.plot(self.x, leftcoef[1] + leftcoef[0] * self.x, color='red')
         self.ax.plot(self.x, rightcoef[1] + rightcoef[0] * self.x, color='red')
+
         #print(midchan_l)
         #print(midchan_r)
 
@@ -320,6 +328,11 @@ class ManyGauss:
         fluxerr = y_err_tot
         # Calculate signal to noise (the ALFALFA way)
         sn = 1000 * totflux / w50 * np.sqrt((w50.clip(min=None, max=400.) / 20.)) / self.rms
+
+        # add red, dashed lines similar to twopeak fit
+        self.ax.plot([vsys, vsys], [-100, 1e4], linestyle='--', color='red', linewidth=0.5)
+        self.ax.plot([leftvel50, rightvel50], [0.25 * (leftmaxval + rightmaxval), 0.25 * (leftmaxval + rightmaxval)],
+                     linestyle='--', color='red', linewidth=0.5)
 
         return deltav, fluxerr, sn, totflux, vsys, vsyserr, w20, w20err, w50, w50err
 
@@ -478,7 +491,7 @@ class ManyGauss:
                     self.rms ** 2 / 4 + slope_err ** 2 * vel50 ** 2 + inter_err ** 2 + 2 * vel50 * cov[0, 1])
         velerr = np.sqrt(variance)
 
-        return vel50, vel20, velerr, coef
+        return vel50, vel20, maxval, velerr, coef
 
     def calculate_lambda(self, deltav, logSNR):
         """
