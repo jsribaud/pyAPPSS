@@ -292,25 +292,25 @@ class Measure:
                                   '\nOnce done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
             else:
                 region_message = 'Once done, press Enter to accept the region, or type \'clear\' and press Enter to clear region selection.\n'
-                response = input(region_message)
-                regions_good = False
-                while not regions_good:
-                    if response == '':
-                        if len(regions) < 2:
-                            response = input("Please complete the region.\n")
-                        else:
-                            regions_good = True
-                    elif response == 'clear':
-                        del regions
-                        regions = []
-                        # regions.clear()
-                        self.plot()
-                        mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-                        response = input('Region cleared! Select a new region now. Press Enter if the region is OK, '
-                                         'or type "clear" and press Enter to clear region selection.\n')
+            response = input(region_message)
+            regions_good = False
+            while not regions_good:
+                if response == '':
+                    if len(regions) < 2:
+                        response = input("Please complete the region.\n")
                     else:
-                        response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
-                        # self.fig.canvas.mpl_disconnect(mark_regions)
+                        regions_good = True
+                elif response == 'clear':
+                    del regions
+                    regions = []
+                    # regions.clear()
+                    self.plot()
+                    mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
+                    response = input('Region cleared! Select a new region now. Press Enter if the region is OK, '
+                                     'or type "clear" and press Enter to clear region selection.\n')
+                else:
+                    response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
+                    # self.fig.canvas.mpl_disconnect(mark_regions)
         else:
             vel1 , vel2 = autozeros.auto_zero(self.vel, self.spec)
             regions.append(vel1)
