@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import matplotlib
 import os
+import pathlib
 
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
@@ -47,7 +48,7 @@ class Measure:
 
     """
 
-    def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, dark_mode=False,
+    def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, path="", dark_mode=False,
                  vel=None, spec=None, rms=None, agc=None, noconfirm=False, overlay=False):
         self.base = True  # for now
         self.smoothed = False
@@ -82,8 +83,10 @@ class Measure:
         self.ax = self.fig.add_subplot()
         self.cid = None
         # Filename modified here, as well
+
         if filename is not None:
             self.filename = 'AGC{:0}.fits'.format(filename)
+            self.path = pathlib.PurePath(path + "/" + self.filename)
             self.load()
             if smo is None:
                 self.res = smooth.smooth(self.spec)
@@ -96,6 +99,8 @@ class Measure:
             self.spec = spec
             self.rms = rms
             self.filename = 'AGC{}.fits'.format(agc)
+            self.path = pathlib.PurePath(path + "/" + self.filename)
+
 
         self.smoothed = True
 
@@ -176,7 +181,7 @@ class Measure:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        hdul = fits.open(self.filename)
+        hdul = fits.open(self.path)
         fitsdata = hdul[1].data
         entries = len(fitsdata)
 
@@ -850,7 +855,7 @@ class Measure:
         """
         Returns the header of the FITS file.
         """
-        hdul = fits.open(self.filename)
+        hdul = fits.open(self.path)
         hdr = hdul[1].header
         return hdr
 

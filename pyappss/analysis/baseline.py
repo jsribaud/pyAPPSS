@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import pathlib
 
 from pyappss.analysis import smooth
 
@@ -26,10 +27,11 @@ class Baseline:
     AGC number of the galaxy, e.g, 104365
     """
 
-    def __init__(self, filename, smooth_int, noconfirm=False, dark_mode=False):
+    def __init__(self, filename, smooth_int, path="", noconfirm=False, dark_mode=False):
         # Filename modified: to AGCxxxxx.fits
         # May align more favorably with desired format, may not. Matches convert.py naming.
         self.filename = 'AGC{}.fits'.format(filename)
+        self.path = pathlib.PurePath(path + "/" + self.filename)
         self.smoothed = False
         self.n = -1
         self.m = []
@@ -70,7 +72,7 @@ class Baseline:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        hdul = fits.open(self.filename)
+        hdul = fits.open(self.path)
         fitsdata = hdul[1].data
         entries = len(fitsdata)
 
@@ -332,7 +334,7 @@ class Baseline:
             (self.rms, self.p, self.yfit) = self.fitpoly(
                 order)  # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
             self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
-            self.ax.plot(self.vel, self.yfit, linestyle='--', color='green', linewidth='1', label='yfit')
+            self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth='1', label='yfit')
 
             response = input()
             if response is '':

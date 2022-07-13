@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pathlib
 from astropy.modeling import models
 from astropy.modeling.models import custom_model
 from astropy.modeling import fitting
@@ -18,8 +19,9 @@ import argparse
 # from scipy.optimization import optimize
 
 class ManyGauss:
-    def __init__(self, vel=None, spec=None, rms=None, agc=None):
+    def __init__(self, vel=None, spec=None, rms=None, agc=None, path=""):
         self.filename = 'AGC{:0}.fits'.format(int(agc))
+        self.path = pathlib.PurePath(path + "/" + self.filename)
         self.x = []
         self.y = []
         self.spec = spec
@@ -539,7 +541,7 @@ class ManyGauss:
         """
         Returns the header of the FITS file.
         """
-        hdul = fits.open(self.filename)
+        hdul = fits.open(self.path)
         hdr = hdul[1].header
         return hdr
 
