@@ -19,7 +19,7 @@ import argparse
 # from scipy.optimization import optimize
 
 class ManyGauss:
-    def __init__(self, vel=None, spec=None, rms=None, agc=None, path=""):
+    def __init__(self, smo=None, vel=None, spec=None, rms=None, agc=None,  path=""):
         self.filename = 'AGC{:0}.fits'.format(int(agc))
         self.path = pathlib.PurePath(path + "/" + self.filename)
         self.x = []
@@ -29,6 +29,7 @@ class ManyGauss:
         self.rms = rms
         self.convolved = []
         self.boxcar = True
+        self.smo = smo
 
         # Clipping 1000 channels in either direction to ignore oddities at the ends.
         length = len(spec)
@@ -555,7 +556,7 @@ class ManyGauss:
         if file_exists == False:
             file = open('ReducedData.csv', 'x')
             message_info = (
-                        'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,FitType,comments' + '\n')
+                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,comments' + '\n')
             file.write(message_info)
 
         hdr = self.__get_header()
@@ -564,13 +565,15 @@ class ManyGauss:
         message = (str(self.filename[3:-5]) + ',' +
                    # Currently commented as GBT files lack attached galaxy names
                    # str(hdr[16]) + ',' +
-                   str(hdr['RA']) + ',' + str(
-                    hdr['DEC']) + ','
+                   str(hdr['RA']) + ',' + str(hdr['DEC']) + ',' +
                    # Similarly, there is not a comparison between optical and radio coordinates.
                    # + str(hdr[18]) + ',' + str(hdr[19]) + ','
-                   + str(self.vsys) + ',' + str(self.w50) + ',' + str(
-                    self.w50err) + ',' + str(self.w20) + ',' + str(self.flux) + ',' + str(self.fluxerr) + ',' + str(
-                    self.SN) + ',' + str(self.rms) + ',' + str(fittype) + ',' + str(comments) + '\n'
+                   str(self.vsys) + ',' +
+                   str(self.w50) + ',' + str(self.w50err) + ',' +
+                   str(self.w20) + ',' +
+                   str(self.flux) + ',' + str(self.fluxerr) + ',' +
+                   str(self.SN) + ',' + str(self.rms) + ',' + str(self.smo) + ',' +
+                   str(fittype) + ',' + str(comments) + '\n'
                    )
         file.write(message)
 

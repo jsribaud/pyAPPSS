@@ -60,6 +60,7 @@ class Measure:
         self.yfit = []
         self.res = []  # and smooth same variable
         self.rms = 0
+        self.smo = smo
         self.overlay = overlay
 
         self.w50 = 0
@@ -869,7 +870,7 @@ class Measure:
         if file_exists == False:
             file = open('ReducedData.csv', 'x')
             message_info = (
-                        'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,FitType,comments' + '\n')
+                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,comments' + '\n')
             file.write(message_info)
 
         hdr = self.__get_header()
@@ -878,16 +879,16 @@ class Measure:
         message = (str(self.filename[3:-5]) + ',' +
                    # Currently commented as GBT files lack attached galaxy names
                    # str(hdr[16]) + ',' +
-                   str(hdr['RA']) + ',' + str(hdr['DEC']) + ',' + 
+                   str(hdr['RA']) + ',' + str(hdr['DEC']) + ',' +
                    # Similarly, there is not a comparison between optical and radio coordinates.
                    # + str(hdr[18]) + ',' + str(hdr[19]) + ','
-                   str(self.vsys) + ',' + 
-                   str(self.w50) + ',' + str(self.w50err) + ',' + 
-                   str(self.w20) + ',' + 
-                   str(self.flux) + ',' + str(self.fluxerr) + ',' + 
-                   str(self.SN) + ',' + str(self.rms) + ',' + 
+                   str(self.vsys) + ',' +
+                   str(self.w50) + ',' + str(self.w50err) + ',' +
+                   str(self.w20) + ',' +
+                   str(self.flux) + ',' + str(self.fluxerr) + ',' +
+                   str(self.SN) + ',' + str(self.rms) + ',' + str(self.smo) + ',' +
                    str(fittype) + ',' + str(comments) + '\n'
-                )
+                   )
         file.write(message)
 
     def __get_comments(self):

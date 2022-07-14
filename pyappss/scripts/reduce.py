@@ -56,9 +56,11 @@ def reduce():
                 elif smo > 21:
                     smo = 21
 
+                print("You have selected to use the multigauss fit. Please note this will automatically smooth the data"
+                      "with a boxcar of 21.\n")
                 b = baseline.Baseline(agc, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
-                multigauss.ManyGauss(vel=vel, spec=spec, rms=rms, agc=agc, path=path)
+                multigauss.ManyGauss(smo=smo, vel=vel, spec=spec, rms=rms, agc=agc, path=path)
 
         except IOError:
             if path == ".":

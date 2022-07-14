@@ -343,7 +343,7 @@ class Baseline:
                 else:
                     self.__plot()
                     response = input('Press Enter again to confirm this baseline fit.'
-                                     ' Type anything else and hit enter to try again.')
+                                     ' Type anything else and hit enter to try again.\n')
                     if response is '':
                         accepted = True
                     else:
