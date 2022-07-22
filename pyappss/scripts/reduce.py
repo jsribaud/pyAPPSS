@@ -45,7 +45,7 @@ def reduce():
         try:
 
             if not mgauss:
-                b = baseline.Baseline(agc, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
+                b = baseline.Baseline(agc, smo=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
                                 vel=vel, spec=spec, rms=rms, agc=agc, noconfirm=noconfirm, overlay=overlay)
