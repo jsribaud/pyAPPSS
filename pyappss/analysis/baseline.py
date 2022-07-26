@@ -67,13 +67,14 @@ class Baseline(Util):
 
         print('Plotting a fit of the recommended order (' + titles[recommended] + ').')
         print('  Enter an order [0-' + '9' + '] to plot and select.')
-        print('  Press [enter] to accept.')
+        print('  Press Enter to accept.')
         order = recommended
 
         accepted = False
         while not accepted:
-            (self.rms, self.p, self.yfit) = self.fitpoly(
-                order)  # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
+            (self.rms, self.p, self.yfit) = self.fitpoly(order)
+            # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
+
             self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
             self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth='1', label='yfit')
 
@@ -90,20 +91,18 @@ class Baseline(Util):
                     else:
                         self.res = np.asarray(self.smo)
                         self.plot()
-                        if order < 10:
-                            print('Plotting a ' + titles[order] + ' order fit.')
-                        else:
-                            print('Plotting a ' + str(order) + 'order fit.')
-            elif int(response) is -1:
-                accepted = True
+                        print('Plotting a ' + titles[order] + ' order fit.')
             else:
-                order = int(response)
-                line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
-                self.ax.lines.remove(line)
-                if order < 10:
+                # checks numeric first, so if not number, false and doesnt try to check the other condition
+                if response.isnumeric() and 0 <= int(response) <= 9:
+                    order = int(response)
+                    line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
+                    self.ax.lines.remove(line)
                     print('Plotting a ' + titles[order] + ' order fit.')
                 else:
-                    print('Plotting a ' + str(order) + ' order fit.')
+                    print('Please enter an order [0-' + '9' + '] to plot and select.\n'
+                          'Press Enter to accept.\n')
+
 
     def __mask(self):
 
