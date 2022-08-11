@@ -1,4 +1,5 @@
 from astropy.io import fits
+from astropy.table import Table
 import numpy as np
 import os
 import glob
@@ -43,8 +44,9 @@ def convert():
 
     # Create the glob, and work within the globspace to effectively write files en masse.
     # This retrieves all files in the raw directory and
-    image_list = glob.glob(str(raw_dir / '*.fits'), recursive=True)
-    N_images = len(image_list)
+    fits_list = glob.glob(str(raw_dir / '*.fits'), recursive=True)
+    csv_list = glob.glob(str(raw_dir / '*.csv'), recursive=True)
+    N_images = len(csv_list)
 
     string_raw = str(pathlib.PurePath('raw'))
     if sys.platform.startswith('win32'):
@@ -52,10 +54,13 @@ def convert():
     else:
         morelength = len(string_raw)
     for i in range(N_images):
-        root_name = image_list[i][image_list[i].rfind(string_raw) + morelength:image_list[i].rfind('.fits')]
+        #root_name = fits_list[i][fits_list[i].rfind(string_raw) + morelength:fits_list[i].rfind('.fits')]
+        root_name = fits_list[i].split('_')[-4]
+        # find corresponding .csv (which contains spectrum)
+        tmp_spec = Table.read(csv_list[i])
         outname = 'AGC' + root_name + '.fits'
         print(outname)
-        hdul = fits.open(image_list[i])
+        hdul = fits.open(fits_list[i])
         # We need the second entry in the fits, since there needs to be a dummy primary hdu in all fits files, even if not an image.
         hdr = hdul[1].header
         data = hdul[1].data
@@ -86,25 +91,26 @@ def convert():
         hel_start = (freq_hel - ((center - 1) * freq_res)) - (freq_res / 3)
         hel_end = (freq_hel - ((center - 1) * freq_res)) + ((length - 1) * freq_res) + (freq_res / 3)
         # Note the 1/3rd of a channel length of fudge factor, shifting the max and min outwards. I am frankly unsure why this creates more accurate data, but this is effectively the most accurate method to the true values, which would be convenient if they could actually be pulled directly in a fits file...
-        hel_freq = np.reshape(np.linspace((hel_start), (hel_end), num=length), (length, 1))
+        hel_freq = tmp_spec['FREQUENCY']#np.reshape(np.linspace((hel_start), (hel_end), num=length), (length, 1))
         # Next, just a simply conversion to MHz, to match what the APPSS format has!
         freq = hel_freq / 1e6
         # The data is reshaped because astropy fits is picky. The next bit just converts frequency to velocity. In velocity space.
-        vel = np.reshape(((rest / hel_freq - 1) * c), (length, 1))
+        vel = tmp_spec['VELOCITY']#np.reshape(((rest / hel_freq - 1) * c), (length, 1))
         # Finally, defining the data as the reshaped numpy array.
-        flux = np.reshape((data['DATA'][0] * 1000), (length, 1))
+        flux = tmp_spec['FLUX']*1000.#np.reshape((data['DATA'][0] * 1000), (length, 1))
         # Two additional arrays are created to match the APPSS data - the "baseline" array and the "weight" array. Because the baseline is created through this procedure anyways, and is added flat in reduce.py, it can just be an array of zeroes. The weight array should likely just be an array of ones - it is not called in reduce.py
-        baseline = np.zeros((length, 1))
-        weight = np.ones((length, 1))
+        tmp_spec['Baseline'] = np.zeros(length)
+        tmp_spec['Weight'] = np.ones(length)
 
         # Next, the data is defining as fits columns so it can be written out!
         freq_col = fits.Column(name='Frequency', format='E', array=freq, unit='MHz')
         vel_col = fits.Column(name='Velocity', format='E', array=vel, unit='km/s')
         flx_col = fits.Column(name='Flux', format='E', array=flux, unit='mJy')
-        baseline_col = fits.Column(name='Baseline', format='E', array=baseline, unit='mJy')
-        weight_col = fits.Column(name='Weight', format='E', array=weight)
+        baseline_col = fits.Column(name='Baseline', format='E', array=tmp_spec['Baseline'], unit='mJy')
+        weight_col = fits.Column(name='Weight', format='E', array=tmp_spec['Weight'])
 
         # The data now gets written into a fits binary table format!
+        #new_tab = Table([tmp_spec['FREQUENCY'],tmp_spec['VELOCITY'],tmp_spec['FLUX'],tmp_spec['Baseline'],tmp_spec['Weight']],units=['MHz','km/s','mJy','mJy',''],names=['Frequency','Velocity','Flux','Baseline','Weight'])
         table_hdu = fits.BinTableHDU.from_columns([vel_col, freq_col, flx_col, baseline_col, weight_col])
         # Creating an empty primary header so the data will function. Additionally, writing in the header values we can!
         empty_primary = fits.PrimaryHDU(header=hdr)
@@ -128,12 +134,12 @@ def convert():
         hdul[1].header = hdr
         # Add a note about how the data was created!
         hdr[
-            'NOTE01'] = 'This fits file was created using a translation program from GBT vegas data to the APPSS format, ' + date
+            'NOTE01'] = 'This fits file was created using a translation program from standard GBTIDL output to the APPSS format, ' + date
         hdul.writeto(str(process_dir / (outname)), overwrite=True)
 
         hdul.close()
 
-    print(image_list)
+    #print(fits_list)
 
 
 if __name__ == '__main__':

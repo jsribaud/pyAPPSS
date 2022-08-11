@@ -31,7 +31,7 @@ setup_keywords['url'] = 'https://github.com/jsribaud/pyAPPSS'
 #
 # END OF SETTINGS THAT NEED TO BE CHANGED.
 #
-setup_keywords['version'] = '0.1.0b10' #get_version(setup_keywords['name'])
+setup_keywords['version'] = '0.1.0b13' #get_version(setup_keywords['name'])
 #
 # Use README.rst as long_description.
 #
@@ -76,7 +76,7 @@ for path, directories, files in data_generator:
     for f in files:
         data_path = '/'.join(path.split('/')[1:])
         data_files.append(data_path + '/' + f)
-setup_keywords['package_data'] = {'casbah': data_files,
+setup_keywords['package_data'] = {'pyappss': data_files,
                                   '': ['*.rst', '*.txt', '*.yaml']}
 setup_keywords['include_package_data'] = True
 
