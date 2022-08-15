@@ -46,7 +46,7 @@ def convert():
     # This retrieves all files in the raw directory and
     fits_list = glob.glob(str(raw_dir / '*.fits'), recursive=True)
     #csv_list = glob.glob(str(raw_dir / '*.csv'), recursive=True)
-    N_images = len(csv_list)
+    N_images = len(fits_list)
 
     string_raw = str(pathlib.PurePath('raw'))
     if sys.platform.startswith('win32'):
@@ -59,8 +59,8 @@ def convert():
         # find corresponding .csv (which contains spectrum)
         csv_file = fits_list[i].replace('.fits','.csv')
         if not os.path.exists(csv_file):
-            print("could not find a matching csv file for ",fits_list[i])
-            print("\t moving to the next file")
+            print(f"could not find a matching csv file for raw/{os.path.basename(fits_list[i])}")
+            print("\tmoving to the next file")
             continue
         else:
             tmp_spec = Table.read(csv_file)
