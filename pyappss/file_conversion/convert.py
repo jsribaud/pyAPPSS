@@ -45,7 +45,7 @@ def convert():
     # Create the glob, and work within the globspace to effectively write files en masse.
     # This retrieves all files in the raw directory and
     fits_list = glob.glob(str(raw_dir / '*.fits'), recursive=True)
-    csv_list = glob.glob(str(raw_dir / '*.csv'), recursive=True)
+    #csv_list = glob.glob(str(raw_dir / '*.csv'), recursive=True)
     N_images = len(csv_list)
 
     string_raw = str(pathlib.PurePath('raw'))
@@ -57,87 +57,93 @@ def convert():
         #root_name = fits_list[i][fits_list[i].rfind(string_raw) + morelength:fits_list[i].rfind('.fits')]
         root_name = fits_list[i].split('_')[-4]
         # find corresponding .csv (which contains spectrum)
-        tmp_spec = Table.read(csv_list[i])
-        outname = 'AGC' + root_name + '.fits'
-        print(outname)
-        hdul = fits.open(fits_list[i])
-        # We need the second entry in the fits, since there needs to be a dummy primary hdu in all fits files, even if not an image.
-        hdr = hdul[1].header
-        data = hdul[1].data
-        # Defining a set of values/variables using values pulled from the fits data/header
-        rest = data['RESTFREQ'][0]
-        vhel = data['VELOCITY'][0] / 1000
-        freq_topo = data['CRVAL1'][0]
-        length = len(data['DATA'][0])
-        freq_res = data['CDELT1'][0]
-        center = data['CRPIX1'][0]
-        freq_hel = rest / ((vhel / c) + 1)
-        bw = data['BANDWID'][0]
+        csv_file = fits_list[i].replace('.fits','.csv')
+        if not os.path.exists(csv_file):
+            print("could not find a matching csv file for ",fits_list[i])
+            print("\t moving to the next file")
+            continue
+        else:
+            tmp_spec = Table.read(csv_file)
+            outname = 'AGC' + root_name + '.fits'
+            print(outname)
+            hdul = fits.open(fits_list[i])
+            # We need the second entry in the fits, since there needs to be a dummy primary hdu in all fits files, even if not an image.
+            hdr = hdul[1].header
+            data = hdul[1].data
+            # Defining a set of values/variables using values pulled from the fits data/header
+            rest = data['RESTFREQ'][0]
+            vhel = data['VELOCITY'][0] / 1000
+            freq_topo = data['CRVAL1'][0]
+            length = len(data['DATA'][0])
+            freq_res = data['CDELT1'][0]
+            center = data['CRPIX1'][0]
+            freq_hel = rest / ((vhel / c) + 1)
+            bw = data['BANDWID'][0]
 
-        # There are some other values we would like to define here, but they are not defined in the initial GBT data
-        ra = str(data['CRVAL2'][0])
-        dec = str(data['CRVAL3'][0])
-        source = str(data['OBJECT'][0])
-        telescope = str(data['TELESCOP'][0])
-        extname = hdr['EXTNAME']
-        equinox = str(data['EQUINOX'][0])
-        rest_freq = str(data['RESTFREQ'][0])
-        bw_mhz = str(data['BANDWID'][0] / 1e6)
-        chan = str(len(data['DATA'][0]))
-        frontend = str(data['FRONTEND'][0])
-        telescope = str(data['TELESCOP'][0])
+            # There are some other values we would like to define here, but they are not defined in the initial GBT data
+            ra = str(data['CRVAL2'][0])
+            dec = str(data['CRVAL3'][0])
+            source = str(data['OBJECT'][0])
+            telescope = str(data['TELESCOP'][0])
+            extname = hdr['EXTNAME']
+            equinox = str(data['EQUINOX'][0])
+            rest_freq = str(data['RESTFREQ'][0])
+            bw_mhz = str(data['BANDWID'][0] / 1e6)
+            chan = str(len(data['DATA'][0]))
+            frontend = str(data['FRONTEND'][0])
+            telescope = str(data['TELESCOP'][0])
 
-        # The meat of the work: starting to define values we will need specifically for our array. Beginning with the heliocentric frequency start. The "center" point is at data point 4097, so there are 4096 steps of the channel resolution to reach the beginning. Similarly, when defining the maximum, there are 8191 steps, rather than 8192 steps, to reach the end. This is assuming a number of channels equal to 8192, the standard for our data, of course. But the procedure doesn't assume this
-        hel_start = (freq_hel - ((center - 1) * freq_res)) - (freq_res / 3)
-        hel_end = (freq_hel - ((center - 1) * freq_res)) + ((length - 1) * freq_res) + (freq_res / 3)
-        # Note the 1/3rd of a channel length of fudge factor, shifting the max and min outwards. I am frankly unsure why this creates more accurate data, but this is effectively the most accurate method to the true values, which would be convenient if they could actually be pulled directly in a fits file...
-        hel_freq = tmp_spec['FREQUENCY']#np.reshape(np.linspace((hel_start), (hel_end), num=length), (length, 1))
-        # Next, just a simply conversion to MHz, to match what the APPSS format has!
-        freq = hel_freq * 1e3
-        # The data is reshaped because astropy fits is picky. The next bit just converts frequency to velocity. In velocity space.
-        vel = tmp_spec['VELOCITY']#np.reshape(((rest / hel_freq - 1) * c), (length, 1))
-        # Finally, defining the data as the reshaped numpy array.
-        flux = tmp_spec['FLUX']*1000.#np.reshape((data['DATA'][0] * 1000), (length, 1))
-        # Two additional arrays are created to match the APPSS data - the "baseline" array and the "weight" array. Because the baseline is created through this procedure anyways, and is added flat in reduce.py, it can just be an array of zeroes. The weight array should likely just be an array of ones - it is not called in reduce.py
-        tmp_spec['Baseline'] = np.zeros(length)
-        tmp_spec['Weight'] = np.ones(length)
+            # The meat of the work: starting to define values we will need specifically for our array. Beginning with the heliocentric frequency start. The "center" point is at data point 4097, so there are 4096 steps of the channel resolution to reach the beginning. Similarly, when defining the maximum, there are 8191 steps, rather than 8192 steps, to reach the end. This is assuming a number of channels equal to 8192, the standard for our data, of course. But the procedure doesn't assume this
+            hel_start = (freq_hel - ((center - 1) * freq_res)) - (freq_res / 3)
+            hel_end = (freq_hel - ((center - 1) * freq_res)) + ((length - 1) * freq_res) + (freq_res / 3)
+            # Note the 1/3rd of a channel length of fudge factor, shifting the max and min outwards. I am frankly unsure why this creates more accurate data, but this is effectively the most accurate method to the true values, which would be convenient if they could actually be pulled directly in a fits file...
+            hel_freq = tmp_spec['FREQUENCY']#np.reshape(np.linspace((hel_start), (hel_end), num=length), (length, 1))
+            # Next, just a simply conversion to MHz, to match what the APPSS format has!
+            freq = hel_freq * 1e3
+            # The data is reshaped because astropy fits is picky. The next bit just converts frequency to velocity. In velocity space.
+            vel = tmp_spec['VELOCITY']#np.reshape(((rest / hel_freq - 1) * c), (length, 1))
+            # Finally, defining the data as the reshaped numpy array.
+            flux = tmp_spec['FLUX']*1000.#np.reshape((data['DATA'][0] * 1000), (length, 1))
+            # Two additional arrays are created to match the APPSS data - the "baseline" array and the "weight" array. Because the baseline is created through this procedure anyways, and is added flat in reduce.py, it can just be an array of zeroes. The weight array should likely just be an array of ones - it is not called in reduce.py
+            tmp_spec['Baseline'] = np.zeros(length)
+            tmp_spec['Weight'] = np.ones(length)
 
-        # Next, the data is defining as fits columns so it can be written out!
-        freq_col = fits.Column(name='Frequency', format='E', array=freq, unit='MHz')
-        vel_col = fits.Column(name='Velocity', format='E', array=vel, unit='km/s')
-        flx_col = fits.Column(name='Flux', format='E', array=flux, unit='mJy')
-        baseline_col = fits.Column(name='Baseline', format='E', array=tmp_spec['Baseline'], unit='mJy')
-        weight_col = fits.Column(name='Weight', format='E', array=tmp_spec['Weight'])
+            # Next, the data is defining as fits columns so it can be written out!
+            freq_col = fits.Column(name='Frequency', format='E', array=freq, unit='MHz')
+            vel_col = fits.Column(name='Velocity', format='E', array=vel, unit='km/s')
+            flx_col = fits.Column(name='Flux', format='E', array=flux, unit='mJy')
+            baseline_col = fits.Column(name='Baseline', format='E', array=tmp_spec['Baseline'], unit='mJy')
+            weight_col = fits.Column(name='Weight', format='E', array=tmp_spec['Weight'])
 
-        # The data now gets written into a fits binary table format!
-        #new_tab = Table([tmp_spec['FREQUENCY'],tmp_spec['VELOCITY'],tmp_spec['FLUX'],tmp_spec['Baseline'],tmp_spec['Weight']],units=['MHz','km/s','mJy','mJy',''],names=['Frequency','Velocity','Flux','Baseline','Weight'])
-        table_hdu = fits.BinTableHDU.from_columns([vel_col, freq_col, flx_col, baseline_col, weight_col])
-        # Creating an empty primary header so the data will function. Additionally, writing in the header values we can!
-        empty_primary = fits.PrimaryHDU(header=hdr)
-        hdul = fits.HDUList([empty_primary, table_hdu])
-        hdr = hdul[1].header
-        hdr['EXTNAME'] = extname
-        hdr['OBSERVAT'] = observatory
-        hdr['TELESCOP'] = telescope
-        # hdr['INSTRUME']=frontend
-        # This was changed because the frontend does read the receiver, but only what vegas knows it as, which is inaccurate
-        hdr['INSTRUME'] = instrument
-        hdr['BEAM'] = beam
-        hdr['OBJECT'] = source
-        hdr['RA'] = ra
-        hdr['DEC'] = dec
-        hdr['EQUINOX'] = equinox
-        hdr['RESTFREQ'] = rest_freq
-        hdr['BW'] = bw_mhz
-        hdr['CHAN'] = chan
-        # we can in fact define the receiver - 'FRONTEND'
-        hdul[1].header = hdr
-        # Add a note about how the data was created!
-        hdr[
-            'NOTE01'] = 'This fits file was created using a translation program from standard GBTIDL output to the APPSS format, ' + date
-        hdul.writeto(str(process_dir / (outname)), overwrite=True)
+            # The data now gets written into a fits binary table format!
+            #new_tab = Table([tmp_spec['FREQUENCY'],tmp_spec['VELOCITY'],tmp_spec['FLUX'],tmp_spec['Baseline'],tmp_spec['Weight']],units=['MHz','km/s','mJy','mJy',''],names=['Frequency','Velocity','Flux','Baseline','Weight'])
+            table_hdu = fits.BinTableHDU.from_columns([vel_col, freq_col, flx_col, baseline_col, weight_col])
+            # Creating an empty primary header so the data will function. Additionally, writing in the header values we can!
+            empty_primary = fits.PrimaryHDU(header=hdr)
+            hdul = fits.HDUList([empty_primary, table_hdu])
+            hdr = hdul[1].header
+            hdr['EXTNAME'] = extname
+            hdr['OBSERVAT'] = observatory
+            hdr['TELESCOP'] = telescope
+            # hdr['INSTRUME']=frontend
+            # This was changed because the frontend does read the receiver, but only what vegas knows it as, which is inaccurate
+            hdr['INSTRUME'] = instrument
+            hdr['BEAM'] = beam
+            hdr['OBJECT'] = source
+            hdr['RA'] = ra
+            hdr['DEC'] = dec
+            hdr['EQUINOX'] = equinox
+            hdr['RESTFREQ'] = rest_freq
+            hdr['BW'] = bw_mhz
+            hdr['CHAN'] = chan
+            # we can in fact define the receiver - 'FRONTEND'
+            hdul[1].header = hdr
+            # Add a note about how the data was created!
+            hdr[
+                'NOTE01'] = 'This fits file was created using a translation program from standard GBTIDL output to the APPSS format, ' + date
+            hdul.writeto(str(process_dir / (outname)), overwrite=True)
 
-        hdul.close()
+            hdul.close()
 
     #print(fits_list)
 
