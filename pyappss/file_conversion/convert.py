@@ -93,7 +93,7 @@ def convert():
         # Note the 1/3rd of a channel length of fudge factor, shifting the max and min outwards. I am frankly unsure why this creates more accurate data, but this is effectively the most accurate method to the true values, which would be convenient if they could actually be pulled directly in a fits file...
         hel_freq = tmp_spec['FREQUENCY']#np.reshape(np.linspace((hel_start), (hel_end), num=length), (length, 1))
         # Next, just a simply conversion to MHz, to match what the APPSS format has!
-        freq = hel_freq / 1e6
+        freq = hel_freq * 1e3
         # The data is reshaped because astropy fits is picky. The next bit just converts frequency to velocity. In velocity space.
         vel = tmp_spec['VELOCITY']#np.reshape(((rest / hel_freq - 1) * c), (length, 1))
         # Finally, defining the data as the reshaped numpy array.

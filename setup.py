@@ -31,7 +31,7 @@ setup_keywords['url'] = 'https://github.com/jsribaud/pyAPPSS'
 #
 # END OF SETTINGS THAT NEED TO BE CHANGED.
 #
-setup_keywords['version'] = '0.1.0b13' #get_version(setup_keywords['name'])
+setup_keywords['version'] = '0.1.0b14' #get_version(setup_keywords['name'])
 #
 # Use README.rst as long_description.
 #
