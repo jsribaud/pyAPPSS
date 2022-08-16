@@ -40,12 +40,23 @@ def reduce():
     mgauss = args.multigauss
     overlay = args.overlay
 
+    # check to see if agc
+
     for agc in agcs:
 
         try:
+            # check if agc contains '.fits'.  If yes, assume this is a filename
+
+            if '.fits' in agc:
+                filename = agc
+
+            else:
+                filename = f"AGC{agc}.fits"
+                # assume it's AGC number
+
 
             if not mgauss:
-                b = baseline.Baseline(agc, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
+                b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
                                 vel=vel, spec=spec, rms=rms, agc=agc, noconfirm=noconfirm, overlay=overlay)
