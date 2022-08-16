@@ -1,9 +1,9 @@
 import argparse
 
-#from pyappss.analysis import baseline
-import sys
-sys.path.append('/Users/rfinn/github/pyAPPSS/pyappss/analysis/')
-import baseline
+from pyappss.analysis import baseline
+#import sys
+#sys.path.append('/Users/rfinn/github/pyAPPSS/pyappss/analysis/')
+#import baseline
 from pyappss.analysis import measure
 from pyappss.analysis import multigauss
 import os
