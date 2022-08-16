@@ -80,14 +80,32 @@ class Baseline:
         """
         from astropy.table import Table
         hdul = Table.read(self.path)
-        self.freq = hdul['FREQUENCY']
-        self.vel = hdul['VHELIO']
-        self.spec = hdul['FLUX']
-        self.weight = hdul['WEIGHT']
-        self.baseline = hdul['BASELINE']
+        self.freq = np.array(hdul['FREQUENCY'].value,'d')
+        self.vel = np.array(hdul['VHELIO'].value,'d')
+        self.spec = np.array(hdul['FLUX'].value,'d')
+        self.weight = np.array(hdul['WEIGHT'].value,'d')
+        self.baseline = np.array(hdul['BASELINE'].value,'d')
 
         self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
         self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
+
+        #hdul = fits.open(self.path)
+        #fitsdata = hdul[1].data
+        #entries = len(fitsdata)
+
+        #self.freq = np.zeros(entries,'d')
+        #self.vel = np.zeros(entries,'d')
+        #self.spec = np.zeros(entries,'d')
+
+        #for i in range(len(fitsdata)):
+        #    self.vel[i] = fitsdata[i][0]
+        #    self.freq[i] = fitsdata[i][1]
+        #    self.spec[i] = fitsdata[i][2]
+        #self.vel = np.array(fitsdata['VHELIO'],'d')
+        #self.freq = np.array(fitsdata['FREQUENCY'],'d')
+        #self.spec = np.array(fitsdata['FLUX'],'d')
+        #self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
+        #self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
 
     def __plot(self, xmin=None, xmax=None, ymin=None, ymax=None):
         plt.cla()
@@ -238,13 +256,24 @@ class Baseline:
                 #     if self.m[i]:
                 #         vel.append(self.vel[i])
                 #         spec.append(self.spec[i])
+                print('number of elements in masked regions = ',np.sum(self.m))
+                #vel = [self.vel[i] for i in range(len(self.m)) if self.m[i]]
+                #spec = [self.spec[i] for i in range(len(self.m)) if self.m[i]]
 
-                vel = [self.vel[i] for i in range(len(self.m)) if self.m[i]]
-                spec = [self.spec[i] for i in range(len(self.m)) if self.m[i]]
+                #vel = np.asarray(vel)
+                #spec = np.asarray(spec)
 
-                vel = np.asarray(vel)
-                spec = np.asarray(spec)
+                vel = self.vel[self.m]
+                spec = self.spec[self.m]
+
+                print('in fitpoly, order = ',order)
+                print('shape of vel  = ',vel.shape)
+                print('shape of spec = ', spec.shape)
+                print('self.n = ',self.n)
+
+                #coeff = np.polyfit(vel, spec, deg=order, cov=False)
                 coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
+                #print(coeff)
                 if min(np.diag(cov)) < 0:
                     sigma = np.ones(order + 1) * 1e6
                 else:
