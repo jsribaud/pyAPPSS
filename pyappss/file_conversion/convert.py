@@ -14,7 +14,7 @@ def convert():
     parser = argparse.ArgumentParser(description="Convert .fits files to APPSS format")
     parser.add_argument('-flag', metavar='ProgramFlag', type=str,
                         help="Code related to specific program. See Readme.md for more information")
-    parser.add_argument('--overwrite', destination='overwrite', default=False, action='store_true',
+    parser.add_argument('--overwrite', dest='overwrite', default=False, action='store_true',
                         help="Set this if you want to overwrite the output in the reduced folder.")
     args = parser.parse_args()
     flag = args.flag
