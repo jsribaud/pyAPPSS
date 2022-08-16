@@ -14,6 +14,8 @@ def convert():
     parser = argparse.ArgumentParser(description="Convert .fits files to APPSS format")
     parser.add_argument('-flag', metavar='ProgramFlag', type=str,
                         help="Code related to specific program. See Readme.md for more information")
+    parser.add_argument('--overwrite', destination='overwrite', default=False, action='store_true',
+                        help="Set this if you want to overwrite the output in the reduced folder.")
     args = parser.parse_args()
     flag = args.flag
 
@@ -66,6 +68,9 @@ def convert():
             tmp_spec = Table.read(csv_file)
             outname = 'AGC' + root_name + '.fits'
             print(outname)
+            if os.path.exists(outname) and not args.overwrite:
+                print(f'Warning: {outname} already exists, skipping.  Use --overwrite to overwrite output files.')
+                continue
             hdul = fits.open(fits_list[i])
             # We need the second entry in the fits, since there needs to be a dummy primary hdu in all fits files, even if not an image.
             hdr = hdul[1].header
