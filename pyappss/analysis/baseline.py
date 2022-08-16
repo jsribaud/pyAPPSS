@@ -30,11 +30,14 @@ class Baseline:
     def __init__(self, filename, smooth_int, path="", noconfirm=False, dark_mode=False):
         # Filename modified: to AGCxxxxx.fits
         # May align more favorably with desired format, may not. Matches convert.py naming.
+        print('in baseline, filename = ',filename)
         if '.fits' in filename:
-            self.filename = filename#
+            self.filename = filename
         else:
             self.filename = 'AGC{}.fits'.format(filename)
+        print('in baseline ',self.filename)
         self.path = pathlib.PurePath(path + "/" + self.filename)
+        self.path = self.filename
         self.smoothed = False
         self.n = -1
         self.m = []

@@ -1,9 +1,12 @@
 import argparse
 
 from pyappss.analysis import baseline
+#import sys
+#sys.path.append('/Users/rfinn/github/pyAPPSS/pyappss/analysis/')
+#import baseline
 from pyappss.analysis import measure
 from pyappss.analysis import multigauss
-
+import os
 
 def reduce():
     # NOTE: you need to have the FITS file in the same directory as this script!
@@ -43,7 +46,7 @@ def reduce():
     # check to see if agc
 
     for agc in agcs:
-
+        print(agc)
         try:
             # check if agc contains '.fits'.  If yes, assume this is a filename
 
@@ -54,6 +57,9 @@ def reduce():
                 filename = f"AGC{agc}.fits"
                 # assume it's AGC number
 
+            # check if filename exists
+            if os.path.exists(filename):
+                print(f'file {filename} does exist')
 
             if not mgauss:
                 b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
@@ -78,7 +84,7 @@ def reduce():
                 p = ""
             else:
                 p = path + "/"
-            print("Could not open {}AGC{}.fits. Please check the filename.\n".format(p, agc))
+            print(f"Could not open {filename}. Please check the filename.\n")
 
 
 if __name__ == '__main__':
