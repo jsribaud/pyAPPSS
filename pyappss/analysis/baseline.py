@@ -60,7 +60,7 @@ class Baseline:
         noconfirm = noconfirm
 
         self.__plot()
-        self.baseline(noconfirm)
+        self.fit_baseline(noconfirm)
         self.__plot()
         input('Press Enter to end Baseline.')
         plt.close()  # close the window (measure makes a new one)
@@ -72,21 +72,16 @@ class Baseline:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        hdul = fits.open(self.path)
-        fitsdata = hdul[1].data
-        entries = len(fitsdata)
+        from astropy.table import Table
+        hdul = Table.read(self.path)
+        self.freq = hdul['FREQUENCY']
+        self.vel = hdul['VHELIO']
+        self.spec = hdul['FLUX']
+        self.weight = hdul['WEIGHT']
+        self.baseline = hdul['BASELINE']
 
-        self.freq = np.zeros(entries)
-        self.vel = np.zeros(entries)
-        self.spec = np.zeros(entries)
-
-        for i in range(len(fitsdata)):
-            self.vel[i] = fitsdata[i][0]
-            self.freq[i] = fitsdata[i][1]
-            self.spec[i] = fitsdata[i][2]
-
-            self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
-            self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
+        self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
+        self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
 
     def __plot(self, xmin=None, xmax=None, ymin=None, ymax=None):
         plt.cla()
@@ -311,7 +306,7 @@ class Baseline:
             recommend = omax  # if nothing else seems to work, recommend the 9th order polynomial
         return recommend, rmsval, pval
 
-    def baseline(self, noconfirm=False):
+    def fit_baseline(self, noconfirm=False):
         # self.smooth()  # smoothing the function
         self.__mask()  # masking the function
         recommended, rmsval, pval = self.calcpoly()  # calculating the recommended order of the function

@@ -109,11 +109,11 @@ def convert():
             tmp_spec['Weight'] = np.ones(length)
 
             # Next, the data is defining as fits columns so it can be written out!
-            freq_col = fits.Column(name='Frequency', format='E', array=freq, unit='MHz')
-            vel_col = fits.Column(name='Velocity', format='E', array=vel, unit='km/s')
-            flx_col = fits.Column(name='Flux', format='E', array=flux, unit='mJy')
-            baseline_col = fits.Column(name='Baseline', format='E', array=tmp_spec['Baseline'], unit='mJy')
-            weight_col = fits.Column(name='Weight', format='E', array=tmp_spec['Weight'])
+            freq_col = fits.Column(name='FREQUENCY', format='E', array=freq, unit='MHz')
+            vel_col = fits.Column(name='VHELIO', format='E', array=vel, unit='km/s')
+            flx_col = fits.Column(name='FLUX', format='E', array=flux, unit='mJy')
+            baseline_col = fits.Column(name='BASELINE', format='E', array=tmp_spec['Baseline'], unit='mJy')
+            weight_col = fits.Column(name='WEIGHT', format='E', array=tmp_spec['Weight'])
 
             # The data now gets written into a fits binary table format!
             #new_tab = Table([tmp_spec['FREQUENCY'],tmp_spec['VELOCITY'],tmp_spec['FLUX'],tmp_spec['Baseline'],tmp_spec['Weight']],units=['MHz','km/s','mJy','mJy',''],names=['Frequency','Velocity','Flux','Baseline','Weight'])
