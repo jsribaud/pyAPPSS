@@ -30,12 +30,12 @@ class Baseline:
     def __init__(self, filename, smooth_int, path="", noconfirm=False, dark_mode=False):
         # Filename modified: to AGCxxxxx.fits
         # May align more favorably with desired format, may not. Matches convert.py naming.
-        print('in baseline, filename = ',filename)
+        #print('in baseline, filename = ',filename)
         if '.fits' in filename:
             self.filename = filename
         else:
             self.filename = 'AGC{}.fits'.format(filename)
-        print('in baseline ',self.filename)
+        #print('in baseline ',self.filename)
         self.path = pathlib.PurePath(path + "/" + self.filename)
         self.path = self.filename
         self.smoothed = False
@@ -256,7 +256,7 @@ class Baseline:
                 #     if self.m[i]:
                 #         vel.append(self.vel[i])
                 #         spec.append(self.spec[i])
-                print('number of elements in masked regions = ',np.sum(self.m))
+                # print('number of elements in masked regions = ',np.sum(self.m))
                 #vel = [self.vel[i] for i in range(len(self.m)) if self.m[i]]
                 #spec = [self.spec[i] for i in range(len(self.m)) if self.m[i]]
 
@@ -266,10 +266,10 @@ class Baseline:
                 vel = self.vel[self.m]
                 spec = self.spec[self.m]
 
-                print('in fitpoly, order = ',order)
-                print('shape of vel  = ',vel.shape)
-                print('shape of spec = ', spec.shape)
-                print('self.n = ',self.n)
+                #print('in fitpoly, order = ',order)
+                #print('shape of vel  = ',vel.shape)
+                #print('shape of spec = ', spec.shape)
+                #print('self.n = ',self.n)
 
                 #coeff = np.polyfit(vel, spec, deg=order, cov=False)
                 coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
