@@ -68,7 +68,7 @@ def convert():
             tmp_spec = Table.read(csv_file)
             outname = 'AGC' + root_name + '.fits'
             print(outname)
-            if os.path.exists(outname) and not args.overwrite:
+            if os.path.exists(str(process_dir / (outname))) and not args.overwrite:
                 print(f'Warning: {outname} already exists, skipping.  Use --overwrite to overwrite output files.')
                 continue
             hdul = fits.open(fits_list[i])
