@@ -1,4 +1,5 @@
 from astropy.io import fits
+from astropy.table import Table
 import argparse
 import numpy as np
 import matplotlib
@@ -182,6 +183,19 @@ class Measure:
         """
         Reads the FITS file and loads the data into the arrays.
         """
+        hdul = Table.read(self.path)
+        self.freq = np.array(hdul['FREQUENCY'].value, 'd')
+        self.vel = np.array(hdul['VHELIO'].value, 'd')
+        self.spec = np.array(hdul['FLUX'].value, 'd')
+        self.weight = np.array(hdul['WEIGHT'].value, 'd')
+        self.baseline = np.array(hdul['BASELINE'].value, 'd')
+
+        self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
+        self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
+
+        """
+        Reads the FITS file and loads the data into the arrays.
+        
         hdul = fits.open(self.path)
         fitsdata = hdul[1].data
         entries = len(fitsdata)
@@ -196,7 +210,7 @@ class Measure:
             self.spec[i] = fitsdata[i][2]
             self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
             self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing needs to occur before showing the spectrum.
-
+        """
     def plot(self, xmin=None, xmax=None, ymin=None, ymax=None):
         """
         Plots the vel by the spec.

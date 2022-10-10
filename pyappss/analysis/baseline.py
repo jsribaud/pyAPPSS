@@ -1,4 +1,5 @@
 from astropy.io import fits
+from astropy.table import Table
 from scipy.stats import t
 
 import argparse
@@ -78,7 +79,6 @@ class Baseline:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        from astropy.table import Table
         hdul = Table.read(self.path)
         self.freq = np.array(hdul['FREQUENCY'].value,'d')
         self.vel = np.array(hdul['VHELIO'].value,'d')
