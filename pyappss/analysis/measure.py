@@ -875,21 +875,24 @@ class Measure:
 
         hdr = self.__get_header()
         file = open('ReducedData.csv', 'a')
-        # Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
-        message = (str(self.filename[3:-5]) + ',' +
-                   # Currently commented as GBT files lack attached galaxy names
-                   # str(hdr[16]) + ',' +
-                   str(hdr['RA']) + ',' + str(hdr['DEC']) + ',' +
-                   # Similarly, there is not a comparison between optical and radio coordinates.
-                   # + str(hdr[18]) + ',' + str(hdr[19]) + ','
-                   str(self.vsys) + ',' +
-                   str(self.w50) + ',' + str(self.w50err) + ',' +
-                   str(self.w20) + ',' +
-                   str(self.flux) + ',' + str(self.fluxerr) + ',' +
-                   str(self.SN) + ',' + str(self.rms) + ',' + str(self.smo) + ',' +
-                   str(fittype) + ',' + str(comments) + '\n'
-                   )
-        file.write(message)
+        try:
+            # Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
+            message = (str(self.filename[3:-5]) + ',' +
+                       # Currently commented as GBT files lack attached galaxy names
+                       # str(hdr[16]) + ',' +
+                       str(hdr['RA']) + ',' + str(hdr['DEC']) + ',' +
+                       # Similarly, there is not a comparison between optical and radio coordinates.
+                       # + str(hdr[18]) + ',' + str(hdr[19]) + ','
+                       str(self.vsys) + ',' +
+                       str(self.w50) + ',' + str(self.w50err) + ',' +
+                       str(self.w20) + ',' +
+                       str(self.flux) + ',' + str(self.fluxerr) + ',' +
+                       str(self.SN) + ',' + str(self.rms) + ',' + str(self.smo) + ',' +
+                       str(fittype) + ',' + str(comments) + '\n'
+                       )
+            file.write(message)
+        except:
+            print('Error: Unable to write output to ReducedData.CSV')
 
     def __get_comments(self):
         """

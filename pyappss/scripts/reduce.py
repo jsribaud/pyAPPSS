@@ -9,10 +9,9 @@ from pyappss.analysis import multigauss
 import os
 
 def reduce():
-    # NOTE: you need to have the FITS file in the same directory as this script!
     parser = argparse.ArgumentParser(description="Baseline and Reduce HI Spectrum.")
     parser.add_argument('filename', metavar='AGC', nargs='+', type=str,
-                        help="AGC number of the galaxy, e.g, 104365. You may list multiple. e.g. 3232 104365 1993 ...")
+                        help="AGC number of the galaxy, e.g, 104365. You may list multiple. e.g. 3232 104365 1993 .... OR you can enter the full filename, including the .fits extension.")
     parser.add_argument('--smo', metavar='smooth', type=int,
                         help="Value for smoothing the spectrum, if nothing is passed Hanning smooth will occur by default;"
                              "\n 'X' for boxcar where X is a postive integer.")
