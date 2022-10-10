@@ -86,11 +86,12 @@ class Measure:
         self.cid = None
         # Filename modified here, as well
 
-        if filename is not None:
-            self.filename = 'AGC{:0}.fits'.format(filename)
+        if filename != None:
+            self.filename = filename#'AGC{:0}.fits'.format(filename)
             self.path = pathlib.PurePath(path + "/" + self.filename)
+            print(os.path.exists(self.path))
             self.load()
-            if smo is None:
+            if smo == None:
                 self.res = smooth.smooth(self.spec)
             else:
                 self.res = smooth.smooth(self.spec, smooth_type=smo)
@@ -100,7 +101,10 @@ class Measure:
             self.res = spec
             self.spec = spec
             self.rms = rms
-            self.filename = 'AGC{}.fits'.format(agc)
+            if '.fits' in agc:
+                self.filename = agc
+            else:
+                self.filename = 'AGC{}.fits'.format(agc)
             self.path = pathlib.PurePath(path + "/" + self.filename)
 
 
@@ -334,7 +338,7 @@ class Measure:
                 # constructing v and s lists if they are within the selected region.
                 if regions[j] <= self.vel[i] <= regions[j + 1]:
                     v.append(self.vel[i])
-                    if len(self.res) is not 0:
+                    if len(self.res) != 0:
                         s.append(self.res[i])
                     else:
                         s.append(self.spec[i])
@@ -353,7 +357,7 @@ class Measure:
             ix, iy = event.xdata, event.ydata
             self.ax.plot([ix, ix], [-100, 1e4], linestyle='--', linewidth=0.7, color='green')
             regions.append(ix)
-            if len(regions) is 2:
+            if len(regions) == 2:
                 self.fig.canvas.mpl_disconnect(mark_regions)
 
     def gaussfunc(self, v, s, v0, sigma):
@@ -891,7 +895,7 @@ class Measure:
         file = open('ReducedData.csv', 'a')
         try:
             # Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
-            message = (str(self.filename[3:-5]) + ',' +
+            message = (str(self.filename) + ',' +
                        # Currently commented as GBT files lack attached galaxy names
                        # str(hdr[16]) + ',' +
                        str(hdr['RA']) + ',' + str(hdr['DEC']) + ',' +

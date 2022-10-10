@@ -221,7 +221,7 @@ class Baseline:
                 # constructing v and s lists if they are within the selected region.
                 if regions[j] <= self.vel[i] <= regions[j + 1]:
                     v.append(self.vel[i])
-                    if len(self.res) is not 0:
+                    if len(self.res) != 0:
                         s.append(self.res[i])
                     else:
                         s.append(self.spec[i])
@@ -237,7 +237,7 @@ class Baseline:
             ix, iy = event.xdata, event.ydata
             self.ax.__plot([ix, ix], [-100, 1e4], linestyle='--', linewidth=0.7, color='green')
             regions.append(ix)
-            if len(regions) is 2:
+            if len(regions) == 2:
                 self.fig.canvas.mpl_disconnect(mark_regions)
 
     def fitpoly(self, order):
