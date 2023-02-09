@@ -7,8 +7,11 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pathlib
+from astropy.modeling import polynomial, fitting
+from scipy import odr, optimize
 
 from pyappss.analysis import smooth
+from pyappss.analysis import FunctionOrders
 
 matplotlib.use('Qt5Agg')
 
@@ -272,12 +275,50 @@ class Baseline:
                 #print('self.n = ',self.n)
 
                 #coeff = np.polyfit(vel, spec, deg=order, cov=False)
-                coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
-                #print(coeff)
-                if min(np.diag(cov)) < 0:
-                    sigma = np.ones(order + 1) * 1e6
-                else:
-                    sigma = np.sqrt(np.diag(cov))  # (list)
+                # coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
+                # #print(coeff)
+                # if min(np.diag(cov)) < 0:
+                #     sigma = np.ones(order + 1) * 1e6
+                # else:
+                #     sigma = np.sqrt(np.diag(cov))  # (list)
+
+                #Potentially, begone NUMPY!
+
+                adj = min(vel) - 1
+
+                vel_adj = vel - adj
+
+                #scipy has a tendency to break at higher order polynomials without this velocity offset.
+                #Theoretically, it shouldn't affect RMS calculations, since it's calculated via the difference of baseline model and the actual data
+                
+                if order == 1:
+                    p_model = FunctionOrders.order_one
+                elif order == 2:
+                    p_model = FunctionOrders.order_two
+                elif order == 3:
+                    p_model = FunctionOrders.order_three
+                elif order == 4:
+                    p_model = FunctionOrders.order_four
+                elif order == 5:
+                    p_model = FunctionOrders.order_five
+                elif order == 6:
+                    p_model = FunctionOrders.order_six
+                elif order == 7:
+                    p_model = FunctionOrders.order_seven
+                elif order == 8:
+                    p_model = FunctionOrders.order_eight
+                elif order == 9:
+                    p_model = FunctionOrders.order_nine
+                    
+                
+                popt, pcov  = optimize.curve_fit(p_model, vel_adj, spec)
+                
+
+                sigma = np.sqrt(np.diag(pcov))
+
+
+                coeff = popt
+                
                 t_test = coeff[0] / sigma[0]  # sigma = std dev
                 dof = self.n - (order + 1) - 1  # degree of freedom
                 p = 2 * t._pdf((-abs(t_test)), dof)  # probability distribution function
@@ -287,7 +328,7 @@ class Baseline:
                 for i in range(len(self.vel)):
                     yval = 0
                     for j in range(order + 1):
-                        yval += (coeff[j] * (self.vel[i] ** (order - j)))  # generating y-values based on the calculated coefficient array.
+                        yval += (coeff[j] * ((self.vel[i]-adj) ** (order - j)))  # generating y-values based on the calculated coefficient array.
                     yfit.append(yval)
 
                 # calculate the rms
