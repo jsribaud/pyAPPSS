@@ -778,7 +778,7 @@ class Measure:
         for i in range(len(self.vel)):
             if self.vel[i] > base_vel[1]:
                 rightedge.append(i)
-            if self.vel[i] > base_vel[0]:
+            if self.vel[i] < base_vel[0]:
                 leftedge.append(i)
         leftedge = max(leftedge) - 1
         # This throws an error with max, and works correctly with min, so has been modified according.
@@ -786,7 +786,7 @@ class Measure:
         # rightedge = max(rightedge) + 1
         # Figure out the "peak" locations, i.e. where the spectrum hits a value of peak-rms
         # In the range given by the bases.
-        peakval = max(self.spec[rightedge:leftedge]) - self.rms
+        peakval = max(self.spec[leftedge:rightedge]) - self.rms
         peak_vel = [(peakval - y[0]) / slope[0] + x[0], (peakval - y[2]) / slope[1] + x[2]]
         # print(peakval, peak_vel)
         # halfmax = [i*0.5 for i in base_vel] + [i*0.5 for i in peak_vel]
@@ -812,8 +812,10 @@ class Measure:
         centerchan = int((leftedge + rightedge) / 2.)
         deltav = abs(self.vel[centerchan + 1] - self.vel[centerchan - 1]) / 2.
         totflux = 0.  # Running total of the integrated flux density
-        for i in range(rightedge, leftedge):  # finding the area of the total region
+        for i in range(leftedge, rightedge):  # finding the area of the total region
             deltav = abs(self.vel[i] - self.vel[i - 2]) / 2.
+            #totflux += deltav * (-self.spec[i])
+            #totflux += deltav * (abs(self.spec[i]))
             totflux += deltav * self.spec[i]
         totflux = totflux / 1000.
         # SN = 1000 * totflux / W50 * np.sqrt((np.choose(np.greater(W50, 400.), (W50, 400.))) / 20.) / self.rms
