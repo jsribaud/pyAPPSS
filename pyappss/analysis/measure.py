@@ -785,6 +785,7 @@ class Measure:
         leftedge = max(leftedge) - 1
         # This throws an error with max, and works correctly with min, so has been modified according.
         rightedge = min(rightedge) + 1
+        print(leftedge,rightedge)
         # rightedge = max(rightedge) + 1
         # Figure out the "peak" locations, i.e. where the spectrum hits a value of peak-rms
         # In the range given by the bases.
