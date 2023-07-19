@@ -79,7 +79,10 @@ class Baseline:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        hdul = Table.read(self.path)
+        #hdul = Table.read(self.path)
+        tmptab = Table.read(self.path)
+        tmpsort = np.argsort(tmptab['VHELIO'])  # checks for spectra format (increasing v or f)
+        hdul = tmptab[tmpsort]  # forces spectra to increase in v
         self.freq = np.array(hdul['FREQUENCY'].value,'d')
         self.vel = np.array(hdul['VHELIO'].value,'d')
         self.spec = np.array(hdul['FLUX'].value,'d')
