@@ -370,14 +370,14 @@ class Baseline:
             self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth='1', label='yfit')
 
             response = input()
-            if response is '':
+            if response == '':
                 if noconfirm:
                     accepted = True
                 else:
                     self.__plot()
                     response = input('Press Enter again to confirm this baseline fit.'
                                      ' Type anything else and hit enter to try again.\n')
-                    if response is '':
+                    if response == '':
                         accepted = True
                     else:
                         self.res = np.asarray(self.smo)
@@ -386,7 +386,7 @@ class Baseline:
                             print('Plotting a ' + titles[order] + ' order fit.')
                         else:
                             print('Plotting a ' + str(order) + 'order fit.')
-            elif int(response) is -1:
+            elif int(response) == -1:
                 accepted = True
             else:
                 order = int(response)
