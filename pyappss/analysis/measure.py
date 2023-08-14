@@ -940,4 +940,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     Measure(filename=args.filename, smo=args.smo, gauss=args.gauss, twopeak=args.twopeak, trap=args.trap,
-            dark_mode=args.dark_mode)
+            dark_mode=args.dark_mode,cog = True)

@@ -1,12 +1,15 @@
 import argparse
-
+from astropy.io import fits 
 from pyappss.analysis import baseline
-#import sys
-#sys.path.append('/Users/rfinn/github/pyAPPSS/pyappss/analysis/')
+import sys
+import matplotlib.pyplot as plt
+sys.path.append('/Users/aryadesai/pyappss_repo/pyappss/analysis/')
 #import baseline
 from pyappss.analysis import measure
 from pyappss.analysis import multigauss
-import os
+import os 
+import pyappss.analysis
+from pyappss.analysis import cogWidthFinder
 
 def reduce():
     parser = argparse.ArgumentParser(description="Baseline and Reduce HI Spectrum.")
@@ -58,8 +61,10 @@ def reduce():
 
             # check if filename exists
             if os.path.exists(filename):
-                print(f'file {filename} does exist')
-
+                print(f'file {filename} does exist.This is a test')
+            b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
+            vel, spec, rms = b()
+            hdul = fits.open({filename})
             if not mgauss:
                 b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
@@ -77,7 +82,24 @@ def reduce():
                 b = baseline.Baseline(agc, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
                 multigauss.ManyGauss(smo=smo, vel=vel, spec=spec, rms=rms, agc=agc, path=path)
+            # Load FITS file and extract relevant headers
+            with fits.open(filename) as hdul:
+                header = hdul[1].header
+                sp_w = header.get('BW', None)
+                resolution = header.get('CHAN', None)
+            # User input to get low_ind and high_ind
+            print("Please click on the start of the profile.")
+            low_ind = plt.ginput(1)[0][0]  # Gets the x-value of the click
+            print("Please click on the end of the profile.")
+            high_ind = plt.ginput(1)[0][0]  # Gets the x-value of the click
+    
+            # Calculate vhelio
+            vhelio = (low_ind + high_ind) / 2.0  
+            # Call cog_velocities
+            cog_result = cogWidthFinder.cog_velocities(vel, spec, vhelio, low_ind, high_ind, rms=rms)
 
+            # Call all_info_fromprev using sp_w and resolution from FITS headers
+            info_result = cogWidthFinder.all_info_fromprev(vel, spec, vhelio, low_ind, high_ind, rms=rms, templatebank=template.template_bank(resolution, sp_w))   
         except IOError:
             if path == ".":
                 p = ""
@@ -87,5 +109,6 @@ def reduce():
 
 
 if __name__ == '__main__':
+    print('This is a test')
     reduce()
 
