@@ -8,7 +8,7 @@ sys.path.append('/Users/aryadesai/pyappss_repo/pyappss/analysis/')
 from pyappss.analysis import measure
 from pyappss.analysis import multigauss
 import os 
-import pyappss.analysis
+from pyappss.analysis import template
 from pyappss.analysis import cogWidthFinder
 
 def reduce():
