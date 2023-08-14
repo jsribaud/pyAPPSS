@@ -1,27 +1,7 @@
-name: pyappss_test
-channels:
- - conda-forge
- - defaults
-dependencies:
- - numpy=1.18
- - scipy=1.4
- - matplotlib=3.1
- - astropy=4
- - urllib3=1.25
- - qt=5.9
- - pillow=7.0
- - qtawesome=0.6
- - qtconsole=4.6
- - qtpy=1.9
- - corner=2.1
- - emcee=3.0
- - pystan=2.19
- - pandas=1.0
- - jupyterlab
- - notebook
 name: pyappss_beta
 channels:
   - defaults
+  - conda-forge
 dependencies:
   - blas=1.0=mkl
   - brotli=1.0.9=hb1e8313_2

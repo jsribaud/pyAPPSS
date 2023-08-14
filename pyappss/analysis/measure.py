@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib
 import os
 import pathlib
-
+import pandas as pd
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
@@ -15,6 +15,7 @@ from astropy.modeling import fitting
 
 from pyappss.analysis import smooth
 from pyappss.analysis import multigauss
+from cogWidthFinder import cog_velocities , all_info_fromprev
 
 class Measure:
     """
@@ -187,9 +188,7 @@ class Measure:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        tmptab = Table.read(self.path)
-        tmpsort = np.argsort(tmptab['VHELIO'])#checks for spectra format (increasing v or f)
-        hdul = tmptab[tmpsort]#forces spectra to increase in v
+        hdul = Table.read(self.path)
         self.freq = np.array(hdul['FREQUENCY'].value, 'd')
         self.vel = np.array(hdul['VHELIO'].value, 'd')
         self.spec = np.array(hdul['FLUX'].value, 'd')
@@ -367,7 +366,20 @@ class Measure:
         Defenition of the gaussian function to be used in the Gaussian fit.
         """
         return s * np.exp(-(v - v0) ** 2 / (2 * sigma ** 2))
-
+    '''cog_velocities(self.vel,self.spec, v_helio, low_ind, high_ind, templatebank, rms = 0.0, vel_thresh = 0.75, which_cog = 0, diagnose = True, interp = False, return_vhel = False, resolution = 5.5, return_params = False, agcn = '')
+    velocity range from load, fluxes from load, v_helio from user input?, low and high ind from user input, keep diagnose true for now to plot, agcn from user)
+    template bank not sure.
+    '''
+    ''' all_info_fromprev(velocities, flux, v_helio, low_ind, high_ind, templatebank, rms, agcn = '', diagnose = False):
+    this is the function that you call outside of this script in order to find COG velocities.
+    returns a pandas df with all the info you need.
+    bandwidth: 23.44 MHz
+    nchan: 8192
+    #arguments:
+    #    vel_thresh: the fraction of the integrated flux that defines the velocity width
+    #    which_cog: this tells whether you calculate using just the profile integrated to higher velocities (-1), lower velocities (1), or using the full profile (0)
+    #    diag: for diagnosing problems - if true, each method spits out diagnostic images.
+    #    return_slopes: if true, returns the long-term slope for the left and right sides of the PW function -- useful for determining if profiles have underestimated widths'''
     def gauss(self, first_region=True):
         """
         Method to fit a gaussian fit.
@@ -780,16 +792,15 @@ class Measure:
         for i in range(len(self.vel)):
             if self.vel[i] > base_vel[1]:
                 rightedge.append(i)
-            if self.vel[i] < base_vel[0]:
+            if self.vel[i] > base_vel[0]:
                 leftedge.append(i)
         leftedge = max(leftedge) - 1
         # This throws an error with max, and works correctly with min, so has been modified according.
         rightedge = min(rightedge) + 1
-        #print(leftedge,rightedge)
         # rightedge = max(rightedge) + 1
         # Figure out the "peak" locations, i.e. where the spectrum hits a value of peak-rms
         # In the range given by the bases.
-        peakval = max(self.spec[leftedge:rightedge]) - self.rms
+        peakval = max(self.spec[rightedge:leftedge]) - self.rms
         peak_vel = [(peakval - y[0]) / slope[0] + x[0], (peakval - y[2]) / slope[1] + x[2]]
         # print(peakval, peak_vel)
         # halfmax = [i*0.5 for i in base_vel] + [i*0.5 for i in peak_vel]
@@ -815,10 +826,8 @@ class Measure:
         centerchan = int((leftedge + rightedge) / 2.)
         deltav = abs(self.vel[centerchan + 1] - self.vel[centerchan - 1]) / 2.
         totflux = 0.  # Running total of the integrated flux density
-        for i in range(leftedge, rightedge):  # finding the area of the total region
+        for i in range(rightedge, leftedge):  # finding the area of the total region
             deltav = abs(self.vel[i] - self.vel[i - 2]) / 2.
-            #totflux += deltav * (-self.spec[i])
-            #totflux += deltav * (abs(self.spec[i]))
             totflux += deltav * self.spec[i]
         totflux = totflux / 1000.
         # SN = 1000 * totflux / W50 * np.sqrt((np.choose(np.greater(W50, 400.), (W50, 400.))) / 20.) / self.rms
@@ -888,8 +897,10 @@ class Measure:
         Writes the values of the quantities to the CSV file.
         :param comments: comments on the fit
         """
-
+        #df.to_csv('cogData.csv')
+        #add checks for exisiting files and updating existing files, also for adding data from ReducedData.csv
         file_exists = os.path.exists('ReducedData.csv')
+
         if file_exists == False:
             file = open('ReducedData.csv', 'x')
             message_info = (
