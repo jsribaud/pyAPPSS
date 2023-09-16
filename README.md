@@ -1,5 +1,16 @@
-This is an alternate version to [Dr. Ribaudo's pyAPPSS code.](https://github.com/jsribaud/pyAPPSS). This contains some quality of life changes but should still function the same.
-The environment will be instead called with conda activate pyappss_alt
+This is an alternate version to [Dr. Ribaudo's pyAPPSS code.](https://github.com/jsribaud/pyAPPSS).
+
+# Notable changes:
+
+-Environment will instead be called with "conda activate pyappss_alt", unless the .yml is changed
+-setup.py is modified to add recognize a few more scripts. I was not able to install pyAPPSS off the GitHub without this change.
+-Smoothing needs to be declared each time data is reduced (--smo #)
+-Fit type needs to be declared each time data is reduced
+-QoL changes to reduce the amount of user input (e.g. user does not need to "Confirm" as often, especially not multiple times in a row)
+-Able to process Archival Data (presently Springob and ALFALFA compatible, but this is based off of the filename)
+-Adds fix from replace-numpy branch
+-An error message regarding inadequate smoothing was commented out for some reason. I re-added it.
+
 
 # Introduction
 
