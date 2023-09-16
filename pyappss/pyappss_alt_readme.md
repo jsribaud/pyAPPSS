@@ -1,0 +1,40 @@
+# Setting up the pyappss python environment with conda
+
+The file "pyappss_alt.yml" contains a list of python packages that have been used to develop the existing pyappss code. In order to ensure that the code runs correctly on whatever system it is executed on it is necessary to use this file to construct a python environment that has all of the dependencies that the code requires. It is advised to use conda to do this as described below.
+
+1. If you do not already have conda on your system then you should follow the instructions [here](https://www.anaconda.com/products/individual) to download and install Anaconda. This will create a version of python that is separate from your system python installation and thus will not interfere with existing packages. However, it may change which version of python is active by default when you open a terminal. If you don't want this to happen then consult this [stack overflow thread](https://stackoverflow.com/questions/54429210/how-do-i-prevent-conda-from-activating-the-base-environment-by-default), alternatively you can select "no" when the Anaconda installer asks "Do you wish the installer to initialize Anaconda3 by running conda init?", but this will complicate the later steps.
+
+2. Once Anaconda is installed check that the conda command is defined in the active terminal by running `conda -h` which should return a brief help docstring. If this fails then it probably means your active terminal does not know where to find the conda executable (Note: this occurs when the installer did not initialise Anaconda). This issue can be fixed by running `source <path where you installed conda>/bin/activate` followed by `conda init`. Again note that `conda init` will set Anaconda as the default python installation that's activated whenever a terminal is launched. If you really don't want to do this then the `conda init` step is not strictly required as the source command will make the conda command available. However, this means you would need to re-run the source command every time you want to use conda in a new terminal.
+
+3. To construct the pyappss python environment from the yml file, navigate in a terminal to the directory containing the "pyappss_alt.yml" file and run: `conda env create -f pyappss_alt.yml`. This will search the repositories for all the required python packages and will probably ask for permission to download and install them. This environment will be entirely separate from any other python environment/installation you have, so you don't have to worry about modifying existing dependencies on your system.
+
+4. Once successfully constructed the pyappss environment can be activated with the command: `conda activate pyappss`. While this environment is active its name will appear on the command line prompt of your terminal. Any python code you run while that environment is active will use the versions of python packages from that environment. This includes when you launch a jupyter notebook (as this was one of the listed dependencies) from the terminal with the pyappss environment active. To leave the environment use the command: `conda deactivate`.
+
+5. If for some reason you want to delete the python environment and start over this can be done with the command: `conda remove -n pyappss --all`. Needless to say, it's very important to be sure you want to do this before running this command, for example if you have modified the packages installed in the environment (see below), these changes will be lost permanently.
+
+
+# Alternative steps for using the pyappss environment on SciServer
+
+If you only want to use the pyappss python environment in the command line then you can simply start at step 3 above (as conda is installed as standard in the SciServer python containers). However, if you want to access it in a jupyter notebook or jupyter lab session then the steps are a little different. SciServer only allows you to launch the base installation of jupyter, not the one installed within a user-made environment, this means that we need to inform the base installation of jupyter about the existence of the python kernel associated with the pyappss environment. To do this follow these steps:
+
+1. Find and open the pyappss_alt.yml file. Remove the "jupyterlab" and "notebook" dependencies and add the dependency "ipykernel". Then proceed with step 3 from above.
+
+2. Activate the pyappss environment using `conda activate pyappss`, then run the command: `ipython kernel install --user --name=pyappss`.
+
+3. Deactivate the environment, close the current session of the SciServer container (be sure to press the red square button to shutdown the container). Then restart the container and launch a jupyter notebook or jupyter lab session as before. In jupyter lab there should now be an option to launch a pyappss notebook, or in jupyter notebook, near the top right, there should be an option to change the kernel to pyappss.
+
+
+# Modifying the python environment
+
+If you are developing new code for the pyappss repository then you may want to install a python package/library that is not currently listed in the environment yml file. When the pyappss environment is active in your terminal you can use the command `conda install <package name>` to install a new package, or `conda search <package name>` to check if the package is available (Note: to search in a different conda repository, or "channel", you can use for example `conda search -c conda-forge <package name>`). Although this is probably the quickest approach to installing a new python package/library it has a significant drawback; it may modify the versions of the packages already installed in the environment in order to reconcile any conflicting dependencies. This in turn may modify or break the functionality of the existing code in the pyappss repository on your system.
+
+Therefore, a different, but slightly more long-winded, approach is advised. Once you have identified the python package that you want to install then add it to the pyappss_alt.yml file on your system. Then (with the pyappss environment inactive) run the command: `conda env update --prefix ./env --file pyappss_alt.yml  --prune`. If this executes successfully then you can use git to commit the changes to the pyappss_alt.yml file to your current branch. If there is a conflict with the previous dependencies then this command will fail. This is better than modifying the existing dependencies as it immediately notifies you that what you want will cause conflicts which must be resolved.
+
+One possible way to avoid such conflicts is to not specify a specific version of the package that you want (assuming that is not essential for your purposes). In this case conda will select the most recent version of the package that is consistent with the existing dependencies (assuming such a version exists). Once it has installed the package you can then update it in the yml file to specify the particular version. When specifying the version number generally only the numbers either side of the first decimal point are necessary, as the third number should indicate only the patch version, not changes to the actual functionality.
+
+It's possible that in some scenarios there may be a package (or specific version) that you want to make use of that simply isn't compatible with the rest of the pyappss python dependencies. There is no fixed solution to this situation and in general it should be discussed with the rest of the pyappss team. However, a quick/temporary workaround is to construct a separate yml file and make a separate python environment to develop the code/tool that you are working on. Hopefully in the long term the conflicting package(s) can be identified, the version modified to make it compatible, and then the outputs of the previous codes tested and checked. However, at present we have no set way to perform such checks, so for now these conflicts will be dealt with as and when they arise.
+
+
+## Useful links
+
+- [Managing conda environments](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#updating-an-environment)

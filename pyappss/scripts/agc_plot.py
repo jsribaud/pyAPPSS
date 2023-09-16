@@ -44,7 +44,7 @@ class Plot():
                  smo=None,
                  h=False):
 
-        self.filename = 'A{:06}.fits'.format(filename)
+        self.filename = 'A{:06}.fits'.format(filename) #This may cause issues with Archival data, as the class description above indicates we expect "filename" to be an integer.
         self.run = False  # boolean to check whether or not to run smoothing operation. If true, yes.
 
         if filetwo is not None:
@@ -165,7 +165,7 @@ class Plot():
             fig, ax = plt.subplots(2)
             ax[0].plot(vel1, signal1, color='black', linewidth=1)
             ax[0].axhline(y=0, color='grey', dashes=[5, 5], linewidth=1)
-            ax[0].set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(self.name()[1:-5]))
+            ax[0].set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='{}'.format(self.name()[1:-5]))
             ax[0].set(xlim=(xmin, xmax), ylim=(ymin, ymax))
             ax[0].grid(False)
 
@@ -183,7 +183,7 @@ class Plot():
 
             ax[1].plot(vel2, signal2, color='black', linewidth=1)
             ax[1].axhline(y=0, color='grey', dashes=[5, 5], linewidth=1)
-            ax[1].set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(self.file_two[1:-5]))
+            ax[1].set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='{}'.format(self.file_two[1:-5]))
             ax[1].set(xlim=(xmin, xmax), ylim=(ymin, ymax))
             ax[1].grid(False)
 
@@ -205,7 +205,7 @@ class Plot():
             fig, ax = plt.subplots()
             ax.plot(vel1, signal1, color='black', linewidth=1)
             ax.axhline(y=0, color='grey', dashes=[5, 5], linewidth=1)
-            ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(self.name()[1:-5]))
+            ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='{}'.format(self.name()[1:-5]))
             ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
             ax.grid(False)
 
@@ -230,7 +230,7 @@ class Plot():
         fig, ax1 = plt.subplots()
         ax1.plot(vel1, signal1, color='black', linewidth=1)
         ax1.axhline(y=0, color='grey', dashes=[5, 5], linewidth=1)
-        ax1.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(self.name()[1:-5]))
+        ax1.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='{}'.format(self.name()[1:-5]))
         ax1.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
         ax1.grid(False)
 
