@@ -1,3 +1,6 @@
+This is an alternate version to [Dr. Ribaudo's pyAPPSS code.](https://github.com/jsribaud/pyAPPSS). This contains some quality of life changes but should still function the same.
+The environment will be instead called with conda activate pyappss_alt
+
 # Introduction
 
 Welcome to pyAPPSS, a set of python-based data reduction scripts for APPSS, the [Arecibo Pisces-Perseus-Supercluster Survey.](https://iopscience.iop.org/article/10.3847/1538-3881/aaf890) pyAPPSS takes data from radio telescopes, primarily in the 21cm HI emmission line, in the form of a spectrum, and reduces it into a form then usuable for science, with values such as object velocity and total object flux (in Jy*km/s). It offers a few options for how the reduction should be conducted, including 3 options for the fit - a gaussian curve, a two-peak fit, and a trapezoidal fit.
@@ -5,7 +8,7 @@ Welcome to pyAPPSS, a set of python-based data reduction scripts for APPSS, the 
 # Setup
 #### Python
 
-These scripts use several python libraries. The instructions and suggestions for properly setting up a python environment are found [here.](pyappss/pyappss_env_readme.md) This list should be comprehensive, but if a script returns an error due to a missing library, it can be imported following the general guidelines of the instructions.
+These scripts use several python libraries. The instructions and suggestions for properly setting up a python environment are found [here.](pyappss/pyappss_alt_readme.md) This list should be comprehensive, but if a script returns an error due to a missing library, it can be imported following the general guidelines of the instructions.
 
 #### File Management
 
