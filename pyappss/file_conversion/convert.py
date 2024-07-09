@@ -57,8 +57,7 @@ def convert():
         morelength = len(string_raw)
     for i in range(N_images):
         #root_name = fits_list[i][fits_list[i].rfind(string_raw) + morelength:fits_list[i].rfind('.fits')]
-        #will pull agc number from filename - requires file format to be XXX_XXX_AGCN_anythingelse
-        root_name = fits_list[i].split('_')[2]
+        root_name = fits_list[i].split('_')[-4]
         # find corresponding .csv (which contains spectrum)
         csv_file = fits_list[i].replace('.fits','.csv')
         if not os.path.exists(csv_file):
