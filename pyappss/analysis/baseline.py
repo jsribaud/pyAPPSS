@@ -8,11 +8,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pathlib
 
-from pyappss.analysis import smooth
+import smooth
+
 
 matplotlib.use('Qt5Agg')
 
-# change 
 
 class Baseline:
     """
@@ -68,6 +68,7 @@ class Baseline:
         noconfirm = noconfirm
 
         self.__plot()
+
         self.fit_baseline(noconfirm)
         self.__plot()
         input('Press Enter to end Baseline.')
@@ -89,6 +90,7 @@ class Baseline:
         self.spec = np.array(hdul['FLUX'].value,'d')
         self.weight = np.array(hdul['WEIGHT'].value,'d')
         self.baseline = np.array(hdul['BASELINE'].value,'d')
+        
 
         self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
         self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
@@ -253,70 +255,37 @@ class Baseline:
                   'Please proceed with masking and call fitpoly() again when masking is complete.')
             self.__mask()  # if not already masked, call the mask function before proceeding
         else:
-            if order != 0:
-                # vel = []
-                # spec = []
-                # for i in range(len(self.m)):
-                #     if self.m[i]:
-                #         vel.append(self.vel[i])
-                #         spec.append(self.spec[i])
-                # print('number of elements in masked regions = ',np.sum(self.m))
-                #vel = [self.vel[i] for i in range(len(self.m)) if self.m[i]]
-                #spec = [self.spec[i] for i in range(len(self.m)) if self.m[i]]
 
-                #vel = np.asarray(vel)
-                #spec = np.asarray(spec)
+            # original code implementation for p-value criteria
+            # coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
 
-                vel = self.vel[self.m]
-                spec = self.spec[self.m]
+            # Bic implementation for basline.py
+            vel = self.vel[self.m]
+            spec = self.spec[self.m]
 
-                #print('in fitpoly, order = ',order)
-                #print('shape of vel  = ',vel.shape)
-                #print('shape of spec = ', spec.shape)
-                #print('self.n = ',self.n)
+            # fit the polynomial of order (order)
+            fitted_series = np.polynomial.polynomial.Polynomial.fit(vel, spec, order).convert().coef
 
-                #coeff = np.polyfit(vel, spec, deg=order, cov=False)
-                coeff, cov = np.polyfit(vel, spec, deg=order, cov=True)  # (list)
-                #print(coeff)
-                if min(np.diag(cov)) < 0:
-                    sigma = np.ones(order + 1) * 1e6
-                else:
-                    sigma = np.sqrt(np.diag(cov))  # (list)
-                t_test = coeff[0] / sigma[0]  # sigma = std dev
-                dof = self.n - (order + 1) - 1  # degree of freedom
-                p = 2 * t._pdf((-abs(t_test)), dof)  # probability distribution function
+            # create and fit polynonial object
+            p = np.polynomial.Polynomial(fitted_series)
+            y_fit = p(self.vel)
 
-                # produce fitted y values
-                yfit = []  # note that this is not the class variable, self.yfit. That comes later.
-                for i in range(len(self.vel)):
-                    yval = 0
-                    for j in range(order + 1):
-                        yval += (coeff[j] * (self.vel[i] ** (order - j)))  # generating y-values based on the calculated coefficient array.
-                    yfit.append(yval)
+            ## Alternative calculation for mse
+            # mse = np.mean((self.spec - y_fit) ** 2) # this calculates the mean squared error
+            # for the entire spectrum, not just the masked region.
 
-                # calculate the rms
-                # res = []  # list of baseline-subtracted spectrum values. Again, note that this is not the class variable, self.res. Also comes later.
-                # rmsarr = []
-                # for i in range(len(yfit)):
-                #     res.append(self.spec[i] - yfit[i])  # subtracting the baseline
-                #     np.asarray(res)
-                #     if self.m[i]:  # if part of the masked region, include it in the rms.
-                #         rmsarr.append(res[i])
-
-                # reduces computation time significantly
-                res = self.spec - yfit  # list of baseline-subtracted spectrum values.
+            # Keeping the same rms calculation as before for rms
+            res = self.spec - y_fit  # list of baseline-subtracted spectrum values.
                     # Again, note that this is not the class variable, self.res. Also comes later.
-                rmsarr = np.asarray([res[i] for i in range(len(yfit)) if self.m[i]])
-                rms = np.std(rmsarr)  # (number)
-            else:
-                coeff = np.mean(self.spec)  # coefficient: fitted y val
-                yfit = np.zeros(len(self.vel)) + coeff  # constant nchan
-                rms = np.std(self.spec)  # standard deviation of spec
+            rmsarr = np.asarray([res[i] for i in range(len(y_fit)) if self.m[i]])
+            rms = np.std(rmsarr)  # (number)
 
-                t_test = np.mean(self.spec) / (rms / self.n)  # t_test-test statistic
-                dof = self.n - 2  # N-2? Degrees of freedom
-                p = float(t.pdf(2 * -abs(t_test), dof))  # probability distribution function
-            return rms, p, yfit
+            # calculate MSE for bic/aic values
+            mse = np.mean([(res[i])**2 for i in range(len(y_fit)) if self.m[i]])
+            # aic = 2 * (order + 1) + self.n * np.log(2 * np.pi) + self.n * np.log(mse) + self.n
+            bic = (order + 1)*np.log(self.n) + self.n * np.log(2 * np.pi) + self.n * np.log(mse) + self.n
+            return rms, bic, y_fit
+
 
     def calcpoly(self):
         """
@@ -324,53 +293,63 @@ class Baseline:
         """
         recommend = -1  # recommended order by program
         omax = 9  # maximum order is 9
-        cutoff = 0.05  # determines how much of a change is significant.
+        #cutoff = 0.05  # determines how much of a change is significant.
         rmsval = []  # array for rms vals
-        pval = []  # list for p-values
+        bicval = []  # list for p-values
 
+        print('Calculating best fit order. Please wait.\n')
         for order in range(omax + 1):  # exclusive end
-            (rms, p, yfit) = self.fitpoly(order)  # call fitpolylbw to get rms and p values
+            (rms, bic, yfit) = self.fitpoly(order)  # call fitpoly to get rms and p values
+            # append value to the list
             rmsval.append(rms)
-            pval.append(p)
+            bicval.append(bic)
+        # grabs the three lowest bic indicies 
+        # index corresponds to order
+        recommend = np.argsort(bicval)[:3]     
 
-        # find recommended order
-        for i in range(omax):
-            if recommend == -1 and pval[i] > cutoff:
-                recommend = i - 1
-                if recommend == -1:
-                    recommend = 0
-                break
-
-        if recommend == -1:
-            recommend = omax  # if nothing else seems to work, recommend the 9th order polynomial
-        return recommend, rmsval, pval
+        return recommend, rmsval, bicval
 
     def fit_baseline(self, noconfirm=False):
         # self.smooth()  # smoothing the function
         self.__mask()  # masking the function
-        recommended, rmsval, pval = self.calcpoly()  # calculating the recommended order of the function
-        titles = ['0th', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th']
+        recommended, rmsval, bicval = self.calcpoly()  # calculating the recommended order of the function
+        titles = ['0th', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th']  # titles for the orders
         print('Statistics for each fit order:')
         print(' order  rms(mJy)')
         for i in range(len(titles)):
-            if i is recommended:
-                print('  ' + titles[i] + '   ' + str(rmsval[i]) + '*')
+            # if our order is recommended print * 
+            if i in recommended:
+                print('  ' + titles[i] + '   ' + str(rmsval[i]) + '*' * (3 - np.where(recommended == i)[0][0]))
             else:
                 print('  ' + titles[i] + '   ' + str(rmsval[i]))
 
-        print('Plotting a fit of the recommended order (' + titles[recommended] + ').')
+        print('Plotting a fit of the recommended order (' + titles[recommended[0]] + ').')
+        print('  An asterisk (***) indicates the recommended order.')
         print('  Enter an order [0-' + '9' + '] to plot and select.')
+        print('  Enter [10] to shuffle through the top three orders.')
         print('  Press [enter] to accept.')
-        order = recommended
-
+        order = recommended[0]
+        
+        
+        # Block of code that will shuffle through polynomial fits
+        #if response == 's':
+         #   for i in range(len(recommended)):
+          #      self.rms, self.aic, self.yfit = self.fitpoly(recommended[i])
+           #     self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
+            #    # Plot the fit for each recommended order with a label
+             #   self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth=1, label=f'yfit for order {recommended[i]}')
+              #  time.sleep(5)  # Wait for 5 seconds before moving to the next plot
+     
         accepted = False
         while not accepted:
-            (self.rms, self.p, self.yfit) = self.fitpoly(
+            plt.title(f"Plot for order {order}")
+            (self.rms, self.aic, self.yfit) = self.fitpoly(
                 order)  # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
             self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
             self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth='1', label='yfit')
 
             response = input()
+                
             if response == '':
                 if noconfirm:
                     accepted = True
@@ -389,6 +368,29 @@ class Baseline:
                             print('Plotting a ' + str(order) + 'order fit.')
             elif int(response) == -1:
                 accepted = True
+            
+            # this allows us to print each recomended order
+            elif int(response) == 10:
+                print("Plotting the three recomended orders.")
+                # iterate through the top three recommended orders
+                for i in range(3):
+                    # remove the previous fit
+                    line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
+                    self.ax.lines.remove(line)
+                    # plot the given order then wait 5 seconds to remove it
+                    (self.rms, self.aic, self.yfit) = self.fitpoly(
+                        recommended[i])  # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
+                    self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
+                    self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth='1', label='yfit')
+                    plt.title(f"Plot for order {recommended[i]}")
+                    plt.pause(3)
+
+                # restore to the reccomened order
+                line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
+                self.ax.lines.remove(line)                
+                print("Shuffle has concluded.")
+                order = recommended[0]
+
             else:
                 order = int(response)
                 line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
