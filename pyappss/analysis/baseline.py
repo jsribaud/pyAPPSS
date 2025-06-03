@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pathlib
 
-import smooth
+from pyappss.analysis import smooth
 
 
 matplotlib.use('Qt5Agg')
