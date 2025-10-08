@@ -1,7 +1,7 @@
 import argparse
 
 from pyappss.analysis import baseline
-#import sys
+import sys
 #sys.path.append('/Users/rfinn/github/pyAPPSS/pyappss/analysis/')
 #import baseline
 from pyappss.analysis import measure
@@ -62,9 +62,14 @@ def reduce():
 
             if not mgauss:
                 b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
-                vel, spec, rms = b()
+                vel, spec, rms, specrms = b()
+                print('Continue to profile measurement?\n'
+                      'Type y or n')
+                response = input()
+                if response != 'y':
+                   sys.exit()
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
-                                vel=vel, spec=spec, rms=rms, agc=agc, noconfirm=noconfirm, overlay=overlay)
+                                vel=vel, spec=spec, rms=rms, specrms=specrms, agc=agc, noconfirm=noconfirm, overlay=overlay)
 
             if mgauss:
                 if smo is None:
@@ -76,6 +81,11 @@ def reduce():
                       "with a boxcar of 21.\n")
                 b = baseline.Baseline(agc, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
                 vel, spec, rms = b()
+                print('Continue to profile measurement?\n'
+                      'Type y or n')
+                response = input()
+                if response != 'y':
+                   sys.exit()
                 multigauss.ManyGauss(smo=smo, vel=vel, spec=spec, rms=rms, agc=agc, path=path)
 
         except IOError:

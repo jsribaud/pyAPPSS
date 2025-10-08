@@ -50,7 +50,7 @@ class Measure:
     """
 
     def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, path="", dark_mode=False,
-                 vel=None, spec=None, rms=None, agc=None, noconfirm=False, overlay=False):
+                 vel=None, spec=None, rms=None, specrms=None, agc=None, noconfirm=False, overlay=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -61,6 +61,7 @@ class Measure:
         self.yfit = []
         self.res = []  # and smooth same variable
         self.rms = 0
+        self.specrms = 0
         self.smo = smo
         self.overlay = overlay
 
@@ -101,6 +102,7 @@ class Measure:
             self.res = spec
             self.spec = spec
             self.rms = rms
+            self.specrms = specrms
             if '.fits' in agc:
                 self.filename = agc
             else:
@@ -636,31 +638,52 @@ class Measure:
             edge = [maxchan, zerochan[-1]]  # since rightfit, we want the first zero crossing
         if v[edge[0]] > v[edge[1]]:
             edge.reverse()  # keeps numbers in order
-        maxval = maxval - self.rms
-        percent15 = .15 * maxval
-        percent85 = .85 * maxval
+
+        maxval0 = maxval - self.rms
+        percent15 = 0.15 * maxval0
+        percent85 = 0.85 * maxval0
         # restrict further to the region between 15% and 85% of maximum
         region = []
         for i in range(len(self.vel)):  # iterating over the whole spectrum so we have consistency in the indices
             if self.res[i] >= percent15 and self.res[i] <= percent85 and self.vel[i] >= v[edge[0]] and self.vel[i] <= v[
                 edge[1]]:
-                region.append(
-                    i)  # appending the indices where the y values are between 15 and 85%, and where the x values are within the selected region.
-        p15chan = min(region)
-        p85chan = max(region)
-        midchan = [p15chan, p85chan]
+                region.append(i)  # appending the indices where the y values are between 15 and 85%, and where the x values are within the selected region.
+        pminchan = min(region)
+        pmaxchan = max(region)
+        midchan = [pminchan, pmaxchan]
         midchan.sort()
         # Perform a a linear fit over the 15%-85% profile edge
         xvals = []
         yvals = []
         xvals = self.vel[midchan[0]:midchan[1]]  # vel from 15% to 85%
         yvals = self.res[midchan[0]:midchan[1]]  # res from 15% to 85%
+
+        if len(xvals) <= 2: 
+           percent0 = 0. * maxval
+           percent1 = 1. * maxval
+           region = []
+           for i in range(len(self.vel)):  # iterating over the whole spectrum so we have consistency in the indices
+               if self.res[i] >= percent0 and self.res[i] <= percent1 and self.vel[i] >= v[edge[0]] and self.vel[i] <= v[edge[1]]:
+                region.append(i)  # appending the indices where the y values are between 15 and 85%, and where the x values are within the selected region.
+           pminchan = min(region)
+           pmaxchan = max(region)
+           midchan = [pminchan, pmaxchan] 
+           midchan.sort()
+           xvals = []
+           yvals = []
+           xvals = self.vel[midchan[0]:midchan[1]]  
+           yvals = self.res[midchan[0]:midchan[1]] 
+
+        print(region)
+        print(xvals,yvals)
         errors = np.zeros(len(xvals)) + self.rms
+
         # Not enough points in the region to fit
         # if len(xvals) <= 3 or abs(edge[1] - edge[0]) < 3:
         #     print(
         #         'There are not enough points in the selected edge region to produce a good fit! Try performing a boxcar smooth on the spectrum using smooth(int) first, or selecting a new region.')
         #     sys.exit('Not enough points to fit. Please try again.')
+
         coef, cov = np.polyfit(xvals, yvals, 1, cov=True)
         sigma = np.sqrt(np.diag(cov))
         intercept = coef[1]  # Unpack the coefficient array
@@ -893,7 +916,8 @@ class Measure:
         if file_exists == False:
             file = open('ReducedData.csv', 'x')
             message_info = (
-                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,comments' + '\n')
+                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,Specrms,comments' + '\n')
+#                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,comments' + '\n')
             file.write(message_info)
 
         hdr = self.__get_header()
@@ -911,7 +935,8 @@ class Measure:
                        str(self.w20) + ',' +
                        str(self.flux) + ',' + str(self.fluxerr) + ',' +
                        str(self.SN) + ',' + str(self.rms) + ',' + str(self.smo) + ',' +
-                       str(fittype) + ',' + str(comments) + '\n'
+                       str(fittype) + ',' + str(self.specrms) + ',' +  str(comments) + '\n'
+#                       str(fittype) + ',' + str(comments) + '\n'
                        )
             file.write(message)
         except:

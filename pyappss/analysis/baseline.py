@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pathlib
+import os
 
 from pyappss.analysis import smooth
 
@@ -22,7 +23,7 @@ class Baseline:
 
     When the instance is called the vel, spec, and rms are returned.
     for e.g, b = Baseline(12159)
-    b()[0] is vel, b()[1] is spec, b()[2] is rms
+    b()[0] is vel, b()[1] is spec, b()[2] is rms , b()[3] is specrms
     Parameters
     ----------
     filename : int
@@ -50,6 +51,7 @@ class Baseline:
         self.res = []
         self.smo = []
         self.rms = 0
+        self.specrms = 0
 
         self.__load()
         self.smo = smooth.smooth(self.spec, smooth_type=smooth_int)
@@ -75,7 +77,7 @@ class Baseline:
         plt.close()  # close the window (measure makes a new one)
 
     def __call__(self):
-        return self.vel, self.res, self.rms
+        return self.vel, self.res, self.rms, self.specrms
 
     def __load(self):
         """
@@ -185,6 +187,8 @@ class Baseline:
         X = []
         self.m = []
         regions.sort()
+        self.specrms=0
+        nrms=0
         for i in range(len(self.vel)):
             j = 0
             inRegion = False
@@ -193,10 +197,31 @@ class Baseline:
                 if self.vel[i] >= regions[j] and self.vel[i] <= regions[j + 1]:
                     X.append(self.vel[i])
                     inRegion = True
+                    self.specrms=self.specrms+self.spec[i]*self.spec[i]
+                    nrms=nrms+1
                 j = j + 2
             self.m.append(inRegion)
         self.n = len(X)
         self.m = np.array(self.m)
+        self.specrms = np.sqrt(self.specrms/nrms)
+        print('Spectrum rms in selected regions is', self.specrms)
+
+        file_exists = os.path.exists('RMS.csv')
+        if file_exists == False:
+            file = open('RMS.csv', 'x')
+            message_info = (
+                    'AGCnr,Specrms' + '\n')
+            file.write(message_info)
+
+        file = open('RMS.csv', 'a')
+        try: 
+            message = (str(self.filename) + ',' +
+                       str(self.specrms) + '\n'
+                       )
+            file.write(message)
+        except:
+            print('Error: Unable to write output to RMS.csv')
+
 
     def __maskregions_onclick(self, event):
 
