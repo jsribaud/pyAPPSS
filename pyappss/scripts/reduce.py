@@ -1,11 +1,13 @@
 import argparse
 
-from pyappss.analysis import baseline
+#from pyappss.analysis import baseline
 import sys
-#sys.path.append('/Users/rfinn/github/pyAPPSS/pyappss/analysis/')
-#import baseline
-from pyappss.analysis import measure
-from pyappss.analysis import multigauss
+
+#from pyappss.analysis import measure
+#from pyappss.analysis import multigauss
+import measure2 as measure
+import baseline2 as baseline
+
 import os
 
 def reduce():
@@ -45,7 +47,7 @@ def reduce():
     # check to see if agc
 
     for agc in agcs:
-        print(agc)
+        #print(agc)
         try:
             # check if agc contains '.fits'.  If yes, assume this is a filename
 
@@ -57,19 +59,21 @@ def reduce():
                 # assume it's AGC number
 
             # check if filename exists
-            if os.path.exists(filename):
-                print(f'file {filename} does exist')
+            #if os.path.exists(filename):
+            #    print(f'file {filename} does exist')
 
             if not mgauss:
                 b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
-                vel, spec, rms, specrms = b()
-                print('Continue to profile measurement?\n'
-                      'Type y or n')
-                response = input()
+                vel, spec, rms, srms, bline, data, header = b()
+                response = input('Is there an emission profile to measure?\n'
+                      'Enter "y" to start the measuring procedure or hit "Return" to exit the program. \n')
+                #response = input()
                 if response != 'y':
-                   sys.exit()
+                    print('No profile to measure - writing out rms information to file...')
+                    measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
+                                vel=vel, spec=spec, rms=rms, bline=bline, srms=srms, data=data, header=header, agc=agc, noconfirm=noconfirm, overlay=overlay, detection=False)
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
-                                vel=vel, spec=spec, rms=rms, specrms=specrms, agc=agc, noconfirm=noconfirm, overlay=overlay)
+                                vel=vel, spec=spec, rms=rms, bline=bline, srms=srms, data=data, header=header, agc=agc, noconfirm=noconfirm, overlay=overlay)
 
             if mgauss:
                 if smo is None:
@@ -85,7 +89,7 @@ def reduce():
                       'Type y or n')
                 response = input()
                 if response != 'y':
-                   sys.exit()
+                    sys.exit()
                 multigauss.ManyGauss(smo=smo, vel=vel, spec=spec, rms=rms, agc=agc, path=path)
 
         except IOError:
