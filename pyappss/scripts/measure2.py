@@ -247,7 +247,7 @@ class Measure:
         :param ymax: optional ymax on the spectrum
         """
         plt.cla()
-        print('Smoothing?')
+        #print('Smoothing?')
         if not self.smoothed:
             print('Smoothing - line 251')
             smooth2.smooth(self.spec)  # smooth the function (hanning) if not already done
