@@ -51,14 +51,17 @@ class Measure:
 
     """
 
-    def __init__(self, filename=None, smo=None, gauss=False, twopeak=False, trap=False, path="", dark_mode=False,
-                 vel=None, spec=None, rms=None, specrms=None, srms=None, bline=None, data=None, header=None, 
-                 agc=None, noconfirm=False, overlay=False, detection=True):
+    def __init__(self, filename=None, smo=1, gauss=False, twopeak=False, trap=False, path="", dark_mode=False,
+                 vel=None, spec=None, xrms=None, specrms=None, rms=None, bline=None, tab=None, header=None,
+                 agc=None, noconfirm=False, stab=None, overlay=False, detection=True, no_smooth=False, uat=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
         self.n = 0
         self.vel = []
+        #
+        self.svel = []
+        #
         self.spec = []
         self.freq = []
         self.yfit = []
@@ -77,6 +80,7 @@ class Measure:
         self.flux = 0
         self.fluxerr = 0
         self.SN = 0
+        self.SMSN = 0
 
         self.currfit = ""  # current fit type
 
@@ -92,23 +96,52 @@ class Measure:
 
         if filename != None:
             self.filename = filename#'AGC{:0}.fits'.format(filename)
-            self.path = pathlib.PurePath(path + "/" + self.filename)
-            print(os.path.exists(self.path))
+            self.path = self.filename#pathlib.PurePath(path + "/" + self.filename)
+            #print(os.path.exists(self.path))
             self.load()
-            if smo == None:
-                self.res = smooth2.smooth(self.spec)
+            #self.plot()
+            if no_smooth:
+                stab, smx = smooth2.smooth(self.tab,no_smooth=no_smooth)
+                #self.tab['FLUX_rebin'] = stab['FLUX']
+                #self.tab['VELOCITY_rebin'] = stab['VELOCITY']
+                self.sflx = stab['FLUX']
+                self.svel = stab['VELOCITY']
+                self.vel = self.tab['VELOCITY']
+                self.spec = self.tab['FLUX']
+                self.res = smx
             else:
-                self.res = smooth2.smooth(self.spec, smooth_type=smo)
+                '''if smo==1:
+                    #just perform Hanning smoothing
+                    stab, smx = smooth2.smooth(self.tab)
+                else:
+                    stab, smx = smooth2.smooth(self.tab,box_width=smo)'''
+                stab, smx = smooth2.smooth(self.tab, box_width=smo)
+                self.sflx = stab['FLUX']
+                self.vel = self.tab['VELOCITY']
+                self.spec = self.tab['FLUX']
+                self.svel = stab['VELOCITY']
+                #self.tab['FLUX_rebin'] = stab['FLUX']
+                #self.tab['VELOCITY_rebin'] = stab['VELOCITY']
                 self.boxcar = True
+                self.res = smx
+                #print(self.vel)
+                #print(self.smo)
+            #print(self.smo)
         else:
-            self.vel = vel
-            self.res = spec
-            self.spec = spec
+            self.tab = tab
+            self.vel = self.tab['VELOCITY']
+            #self.res = spec
+            #self.spec = spec
+            self.res = self.tab['FLUX']
+            self.spec = self.tab['FLUX']
+            self.xrms = xrms
             self.rms = rms
-            self.srms = srms
             self.specrms = specrms
             self.bline = bline
-            self.tab = data
+            self.sflx = stab['FLUX']
+            self.svel = stab['VELOCITY']
+            self.sbase = stab['BASELINE']
+            #self.tab = data
             self.header = header
             if '.fits' in agc:
                 self.filename = agc
@@ -125,13 +158,14 @@ class Measure:
             self.__write_file(self.__get_comments(), 'nondetection')
             sys.exit()
 
-        length = len(vel)
+        #length = len(vel)
+        length = len(self.svel)
         if self.overlay == True:
             self.y = []
             self.x = []
             # Setting these conditions so it can run directly. Maybe I should have defined these arrays in the gaussfilter function, however.
             for i in range(1000, length - 1001):
-                self.x.append(self.vel[i])
+                self.x.append(self.svel[i])
                 self.y.append(self.spec[i])
             self.y = np.nan_to_num(self.y)
             self.x = np.nan_to_num(self.x)
@@ -147,12 +181,21 @@ class Measure:
         if noconfirm == False:
 
             # if none of the flags are set, skip question
+            fittype = 'None'
+            if twopeak:
+                fittype = 'Two Peak'
+            elif trap:
+                fittype = 'Trap'
+            elif gauss:
+                fittype = 'Gauss'
             if not twopeak and not trap and not gauss:
                 response = 'no'
             else:
-                print('Do you want to keep your previously selected fit type?\n'
-                      'Type "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type')
-                response = input()
+                print('Your current fit selection is: '+fittype+'\n')
+                print('Do you want to keep your previously selected fit type?\n')
+                tms = 'Type "yes" and press Enter to keep, type anything else and press Enter to pick a new fit type.  '
+                response = input(tms)
+                
 
             # allow the user to select new fits types
             if response != 'yes':
@@ -166,10 +209,13 @@ class Measure:
                     response = input()
                     if response == 'gauss':
                         gauss = True
+                        chosen = True
                     elif response == 'twopeak':
                         twopeak = True
+                        chosen = True
                     elif response == 'trap':
                         trap = True
+                        chosen = True
                     elif response == '':
                         chosen = True
                     else:
@@ -202,21 +248,54 @@ class Measure:
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        tmptab = Table.read(self.path)
-        tmpsort = np.argsort(tmptab['VHELIO'])#checks for spectra format (increasing v or f)
-        hdul = tmptab[tmpsort]#forces spectra to increase in v
-        
-        self.freq = np.array(hdul['FREQUENCY'].value, 'd')
-        self.vel = np.array(hdul['VHELIO'].value, 'd')
-        self.spec = np.array(hdul['FLUX'].value, 'd')
-        self.weight = np.array(hdul['WEIGHT'].value, 'd')
-        try:
-            hdul['BASELINE'] = self.bline
-            self.baseline = np.array(hdul['BASELINE'].value, 'd')
-        except:
-            self.baseline = np.array(hdul['BASELINE'].value, 'd')
-        self.hdu = hdul
+        thdu = fits.open(self.path)
+        # tmptab = Table.read(self.path)
+        tmptab = Table(thdu[1].data)
+        velname = 'VELOCITY'
+        fluxname = 'FLUX'
+        freqname = 'FREQUENCY'
+        weightname = 'WEIGHT'
+        baselinename = 'BASELINE'
+        vel_list = ['VHELIO', 'Vhelio', 'VELOCITY', 'Velocity', 'VEL', 'Vel']
+        freq_list = ['FREQUENCY', 'Frequency', 'FREQ', 'Freq']
+        flux_list = ['FLUX', 'Flux', 'SPEC', 'Spec']
+        weight_list = ['WEIGHT', 'Weight']
+        baseline_list = ['BASELINE', 'Baseline']
+        for ii in range(len(tmptab.colnames)):
+            if tmptab.colnames[ii] in vel_list:
+                velname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in freq_list:
+                freqname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in flux_list:
+                fluxname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in weight_list:
+                weightname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in baseline_list:
+                baselinename = tmptab.colnames[ii]
+        tmpsort = np.argsort(tmptab[velname])  # checks for spectra format (increasing v or f)
+        hdul = tmptab[tmpsort]  # forces spectra to increase in v
+        self.tab = hdul
+        self.header = thdu[1].header
 
+        # self.cnames = {'Velocity':velname,'Frequency':freqname,'Flux':fluxname,'Weight':weightname,'Baseline':baselinename}
+
+        try:
+            self.vel = np.array(self.tab[velname].value, 'd')
+            self.freq = np.array(self.tab[freqname].value, 'd')
+            self.spec = np.array(self.tab[fluxname].value, 'd')
+            self.weight = np.array(self.tab[weightname].value, 'd')
+            self.baseline = np.array(self.tab[baselinename].value, 'd')
+            self.tab.rename_column(velname, 'VELOCITY')
+            self.tab.rename_column(freqname, 'FREQUENCY')
+            self.tab.rename_column(fluxname, 'FLUX')
+            self.tab.rename_column(weightname, 'WEIGHT')
+            self.tab.rename_column(baselinename, 'BASELINE')
+        except:
+            print('Unable to properly load fits table - column names unrecognized. Run gbtfits_load() on your GBT' +
+                  'data to produce an appropriate file format. Or use the flag -gbt_fits to load a GBT .FITS file.')
+            sys.exit()
+
+        
         self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
         self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
 
@@ -249,24 +328,33 @@ class Measure:
         plt.cla()
         #print('Smoothing?')
         if not self.smoothed:
-            print('Smoothing - line 251')
+            print('Smoothing - line 252')
             smooth2.smooth(self.spec)  # smooth the function (hanning) if not already done
 
         # plt.ion()
         # fig, ax = plt.subplots()
 
         if not self.base:
-            self.ax.step(self.vel, self.spec, linewidth=1,color='k')
+            self.ax.step(self.vel, self.spec, linewidth=1,color='r')
             # ymin = min(self.smo)  # if not baselined, use max/min of the smoothed spectrum values
             # ymax = max(self.smo)
 
         else:
-            self.ax.step(self.vel, self.res, linewidth=1,color='k')
+            #self.ax.step(self.vel, self.res, linewidth=1,color='k')
+            self.ax.step(self.svel, self.sflx, linewidth=1, color='k')
             # ymin = min(self.res)  # if already baselined, use max/min of residual values
             # ymax = max(self.smo)
 
         self.ax.axhline(y=0, dashes=[5, 5])
+        tmedflx = np.median(self.sflx)
+        tmaxflx = np.max(self.sflx)
+        if xmin==None:
+            ymax = min(5*tmaxflx,1000*tmedflx)
+            ymin = -50*tmedflx
+            xmin = np.min(self.svel)
+            xmax = np.max(self.svel)
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
+        self.ax.step(self.svel, 0*self.sflx+ymax, linewidth=1, color='r', ls=':')
 
         if self.overlay == True:
             self.ax.plot(self.x, self.y, linewidth=1, color='orange')
@@ -276,8 +364,9 @@ class Measure:
         props = dict(boxstyle='round', facecolor='crimson')
         self.ax.text(0.1, 1.05, message, transform=self.ax.transAxes, fontsize=14, bbox=props)
 
-        title = self.filename[3:-5]  # get just the AGC number
-        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
+
+        title = self.filename[:-5]  # get just the AGC number
+        self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title=title)
         self.fig.canvas.draw()
 
     # def smooth(self, smoothtype=None):
@@ -314,11 +403,13 @@ class Measure:
         :return:
         """
         print("\n Select a region without rfi or the source for RMS calculation")
-        v, s = self.markregions()
+        v, s, xv, xs = self.markregions(calcrms=True)
         self.rms = np.std(s)
-        print('\n RMS of Spectrum: ', self.rms)
+        self.xrms = np.std(xs)
+        print('\n RMS of Spectrum: ', f"{self.xrms:.2f}", 'mJy')
+        print('\n RMS of Smoothed Spectrum: ', f"{self.rms:.2f}", 'mJy\n')
 
-    def markregions(self, first_region=True):
+    def markregions(self, first_region=True, calcrms=False):
         """
         Method to interactively select regions on the spectrum
         :return: v, the velocity values in the region
@@ -331,11 +422,14 @@ class Measure:
         #self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
-        if first_region == True:
-            region_message = 'Select a region free of RFI that has the source within it.\n' \
-                             'Once done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
-        else:
+        if calcrms==True:
             region_message = 'Once done, press Enter to accept the region, or type \'clear\' and press Enter to clear region selection.\n'
+        else:
+            if first_region == True:
+                region_message = 'Select a region free of RFI that has the source within it.\n' \
+                                 'Once done, press Enter if the region is OK, or type "clear" and press Enter to clear region selection.\n'
+            else:
+                region_message = 'Once done, press Enter to accept the region, or type \'clear\' and press Enter to clear region selection.\n'
         response = input(region_message)
         regions_good = False
         while not regions_good:
@@ -358,21 +452,43 @@ class Measure:
         regions.sort()
         v = list()
         s = list()
+        xs = list()
+        xv = list()
+        #print(len(self.spec),len(self.sflx))
+        #print(len(self.vel),len(self.svel))
+        #print(regions)
+        for i in range(len(self.svel)):
+            for j in range(len(regions) - 1):
+
+                # constructing v and s lists if they are within the selected region.
+                if regions[j] <= self.svel[i] <= regions[j + 1]:
+                    v.append(self.svel[i])
+                    #if len(self.res) != 0:
+                    #   s.append(self.res[i])
+                    #else:
+                    #    s.append(self.spec[i])
+                    #xs.append(self.spec[i])
+                    s.append(self.sflx[i])
         for i in range(len(self.vel)):
             for j in range(len(regions) - 1):
                 # constructing v and s lists if they are within the selected region.
                 if regions[j] <= self.vel[i] <= regions[j + 1]:
-                    v.append(self.vel[i])
-                    if len(self.res) != 0:
-                        s.append(self.res[i])
-                    else:
-                        s.append(self.spec[i])
+                    xv.append(self.vel[i])
+                    #if len(self.res) != 0:
+                    #   s.append(self.res[i])
+                    #else:
+                    #    s.append(self.spec[i])
+                    xs.append(self.spec[i])
+                    #s.append(self.sflx[i])
         # changing v and s into numpy arrays so calculations become shorter.
 
         del mark_regions, regions
+
         v = np.asarray(v)
         s = np.asarray(s)
-        return v, s
+        xv = np.asarray(xv)
+        xs = np.asarray(xs)
+        return v, s, xv, xs
 
     def __markregions_onclick(self, event):
         """
@@ -414,7 +530,7 @@ class Measure:
 
             #self.__print_values()
 
-            self.plot(min(v), max(v), min(s), max(s))
+            self.plot(min(v), max(v), min(s), 1.25*max(s))
             self.ax.plot(v, self.gaussfunc(v, popt[0], popt[1], popt[2]), 'r')  # plotting the gaussian fit to the spectrum
             # something to keep as reference: popt[0] = peak, popt[1] = central velocity, popt[2] = sigma
 
@@ -439,11 +555,14 @@ class Measure:
 
     def __print_values(self):
         print('\n')
-        print('W50 = ', self.w50, ' +/- ', self.w50err, ' km/s ')
-        print('W20 = ', self.w20, ' +/- ', self.w20err, ' km/s ')
-        print('vsys = ', self.vsys, ' +/- ', self.vsyserr, ' km/s')
-        print('flux = ', self.flux, ' +/- ', self.fluxerr, ' Jy km/s')
-        print('SN: ' + str(self.SN))
+        print('W50 = ', f"{self.w50:.2f}", ' +/- ', f"{self.w50err:.2f}", ' km/s ')
+        print('W20 = ', f"{self.w20:.2f}", ' +/- ', f"{self.w20err:.2f}", ' km/s ')
+        print('vsys = ', f"{self.vsys:.2f}", ' +/- ', f"{self.vsyserr:.2f}", ' km/s')
+        print('flux = ', f"{self.flux:.2f}", ' +/- ', f"{self.fluxerr:.2f}", ' Jy km/s')
+        print('rms = ', f"{self.rms:.2f}", 'mJy')
+        print('SN: ', f"{self.SN:.2f}")
+        print('xrms =', f"{self.xrms:.2f}", 'mJy')
+        print('xSN: ', f"{self.xSN:.2f}")
 
     def __gaussian_fit(self, vel, spec):
         """
@@ -508,9 +627,9 @@ class Measure:
         #         sys.exit('Program exited. Not baselined.')
         self.plot()
 
-        print("Please select the region for a two-peaked fit.")
-        v, s = self.markregions(first_region)
-        self.plot(min(v), max(v), min(s), max(s))
+        print("Please select the region for a two-peaked fit.\n")
+        v, s, xv, xs = self.markregions(first_region)
+        self.plot(min(v), max(v), min(s), 1.25*max(s))
 
         left = True  # left fitting starts as true, so user fits the left side of the emission first.
         right = False  # user will fit right side of emission second.
@@ -523,38 +642,46 @@ class Measure:
         while left:
             print('\nSelect a region around one of the outer slopes of the profile.')
             first_region = False
-            leftv, lefts = self.markregions(first_region)
+            leftv, lefts, leftxv, leftxs = self.markregions(first_region)
             fitedge = [min(leftv), max(leftv)]
 
             # self.plot(None, None, min(self.res), max(self.res))
-            leftcoef, leftvel, leftvel20, leftsigma, leftcov, leftmaxval, lefterror = self.edgefit(leftv, lefts, left,
+            try:
+                leftcoef, leftvel, leftvel20, leftsigma, leftcov, leftmaxval, lefterror = self.edgefit(leftv, lefts, left,
                                                                                                    right)
-            # plotting the fit and checking
-            self.plot(min(v), max(v), min(s), max(s))
-            self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
+                # plotting the fit and checking
+                self.plot(min(v), max(v), min(s), 1.25*max(s))
+                self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
 
-            response = input('Is this fit OK? Press Enter to accept or any other key for No.')
-            if response == '':
-                break  # move on to right fit. if not, keep looping through the left until an appropriate fit is found.
+                response = input('Is this fit OK? Press Enter to accept or any other key for No.')
+                if response == '':
+                    break  # move on to right fit. if not, keep looping through the left until an appropriate fit is found.
+            except:
+                response = input('Unable to set the edge (likely too few data points in the set region). \n'
+                                 'Press Enter to try again.')
         # right fitting
         right = True  # user fits right side of emission
         while right:
             first_region = False
             print('\nSelect the region around the second slope of the profile.')
-            rightv, rights = self.markregions(first_region)
+            rightv, rights, rightxv, rightxs = self.markregions(first_region)
+            #print(rightv)
             fitedge = [min(rightv), max(rightv)]
-            rightcoef, rightvel, rightvel20, rightsigma, rightcov, rightmaxval, righterror = self.edgefit(rightv,
-                                                                                                          rights, left,
-                                                                                                          right)
-            # plotting the fit and checking
-            self.plot(min(v), max(v), min(s), max(s))
-            self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)  # orange represents the left side
-            self.ax.plot(v, rightcoef[1] + rightcoef[0] * v)  # red represents the right side
+            try:
+                rightcoef, rightvel, rightvel20, rightsigma, rightcov, rightmaxval, righterror = self.edgefit(rightv,
+                                                                                                              rights, left,
+                                                                                                              right)
+                # plotting the fit and checking
+                self.plot(min(v), max(v), min(s), 1.25*max(s))
+                self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)  # orange represents the left side
+                self.ax.plot(v, rightcoef[1] + rightcoef[0] * v)  # red represents the right side
 
-            response = input('Is this fit OK? Press Enter to accept or any other key for No.')
-            if response == '':
-                break  # moves on to calculations. if not, keep looping through right fit until an appropriate fit is found.
-
+                response = input('Is this fit OK? Press Enter to accept or any other key for No.')
+                if response == '':
+                    break  # moves on to calculations. if not, keep looping through right fit until an appropriate fit is found.
+            except:
+                response = input('Unable to set the edge (likely too few data points in the set region). \n'
+                                 'Press Enter to try again.')
         # swap values if the user selected left/right backwards
             # check the slopes from the coefs
             # if left is negative, then it is the right slope
@@ -567,14 +694,14 @@ class Measure:
             rightmaxval, leftmaxval = leftmaxval, rightmaxval
             righterror, lefterror = lefterror, righterror
 
-        deltav, fluxerr, sn, totflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__twopeak_calc(leftcoef, lefterror,
+        deltav, fluxerr, sn, xsn, totflux, xtotflux, vsys, vsyserr, w20, w20err, w50, w50err = self.__twopeak_calc(leftcoef, lefterror,
                                                                                                     leftvel, leftvel20,
                                                                                                     rightcoef,
                                                                                                     righterror,
                                                                                                     rightvel,
-                                                                                                    rightvel20, s, v)
+                                                                                                    rightvel20, v, s, xs)
         # use measure's plot and add in the extra lines
-        self.plot(min(v), max(v), min(s), max(s))
+        self.plot(min(v), max(v), min(s), 1.25*max(s))
         self.ax.plot(v, leftcoef[1] + leftcoef[0] * v)
         self.ax.plot(v, rightcoef[1] + rightcoef[0] * v)
         self.ax.plot([vsys, vsys], [-100, 1e4], linestyle='--', color='red', linewidth=0.5)
@@ -588,13 +715,15 @@ class Measure:
         self.vsys = vsys
         self.vsyserr = vsyserr
         self.flux = totflux
+        self.xflux = xtotflux
         self.fluxerr = fluxerr
         self.SN = sn
+        self.xSN = xsn
 
         self.__print_values()
 
-    def __twopeak_calc(self, leftcoef, lefterror, leftvel, leftvel20, rightcoef, righterror, rightvel, rightvel20, s,
-                       v):
+    def __twopeak_calc(self, leftcoef, lefterror, leftvel, leftvel20, rightcoef, righterror, rightvel, rightvel20, v, s,
+                       xs):
         """
         Helper method that calculates all the qualities of the twopeak fit and returns them
         """
@@ -622,13 +751,20 @@ class Measure:
         vsyserr = w50err / np.sqrt(2)
         # integrate the flux
         totflux = 0
+        xtotflux = 0
         for i in range(leftedge, rightedge):  # finding the area of the total region
             totflux += deltav * s[i]
+        for i in range(leftedge, rightedge):  # finding the area of the total region
+            xtotflux += deltav * xs[i]
+        xtotflux = np.sum(xs[leftedge:rightedge])*deltav
+        xtotflux = xtotflux/1000
         totflux = totflux / 1000  # from mJy to Jy
+        #print(totflux,xtotflux)
         fluxerr = 2 * (self.rms / 1000) * np.sqrt(1.4 * w50 * deltav)
         # Calculate signal to noise (the ALFALFA way)
         sn = 1000 * totflux / w50 * np.sqrt((w50.clip(min=None, max=400.) / 20.)) / self.rms
-        return deltav, fluxerr, sn, totflux, vsys, vsyserr, w20, w20err, w50, w50err
+        xsn = 1000 * totflux / w50 * np.sqrt(w50.clip(min=None, max=400.) / 20.) / self.xrms
+        return deltav, fluxerr, sn, xsn, totflux, xtotflux, vsys, vsyserr, w20, w20err, w50, w50err
 
     def edgefit(self, v, s, left=None, right=None):
 
@@ -640,6 +776,7 @@ class Measure:
         maxval = max(s)  # finding max y-val in selected region
         # finding location of maxval, relative to the selected region
         maxchan = np.argmax(s)  # where does the max y-val occur?
+        #print(minspec,maxval,maxchan)
         if left and not right:  # leftfit
             zerochan = []
             for i in range(len(v) - 1):
@@ -665,8 +802,9 @@ class Measure:
         percent85 = 0.85 * maxval0
         # restrict further to the region between 15% and 85% of maximum
         region = []
-        for i in range(len(self.vel)):  # iterating over the whole spectrum so we have consistency in the indices
-            if self.res[i] >= percent15 and self.res[i] <= percent85 and self.vel[i] >= v[edge[0]] and self.vel[i] <= v[
+        for i in range(len(self.svel)):  # iterating over the whole spectrum so we have consistency in the indices
+            #swapping self.sflx for self.res
+            if self.sflx[i] >= percent15 and self.sflx[i] <= percent85 and self.svel[i] >= v[edge[0]] and self.svel[i] <= v[
                 edge[1]]:
                 region.append(i)  # appending the indices where the y values are between 15 and 85%, and where the x values are within the selected region.
         pminchan = min(region)
@@ -676,15 +814,17 @@ class Measure:
         # Perform a a linear fit over the 15%-85% profile edge
         xvals = []
         yvals = []
-        xvals = self.vel[midchan[0]:midchan[1]]  # vel from 15% to 85%
-        yvals = self.res[midchan[0]:midchan[1]]  # res from 15% to 85%
+        xvals = self.svel[midchan[0]:midchan[1]]  # vel from 15% to 85%
+        #sflx for res
+        yvals = self.sflx[midchan[0]:midchan[1]]  # res from 15% to 85%
 
         if len(xvals) <= 2: 
            percent0 = 0. * maxval
            percent1 = 1. * maxval
            region = []
-           for i in range(len(self.vel)):  # iterating over the whole spectrum so we have consistency in the indices
-               if self.res[i] >= percent0 and self.res[i] <= percent1 and self.vel[i] >= v[edge[0]] and self.vel[i] <= v[edge[1]]:
+           #sflx for res
+           for i in range(len(self.svel)):  # iterating over the whole spectrum so we have consistency in the indices
+               if self.sflx[i] >= percent0 and self.sflx[i] <= percent1 and self.svel[i] >= v[edge[0]] and self.svel[i] <= v[edge[1]]:
                 region.append(i)  # appending the indices where the y values are between 15 and 85%, and where the x values are within the selected region.
            pminchan = min(region)
            pmaxchan = max(region)
@@ -692,8 +832,9 @@ class Measure:
            midchan.sort()
            xvals = []
            yvals = []
-           xvals = self.vel[midchan[0]:midchan[1]]  
-           yvals = self.res[midchan[0]:midchan[1]] 
+           xvals = self.svel[midchan[0]:midchan[1]]
+           #smo for res
+           yvals = self.sflx[midchan[0]:midchan[1]]
 
         #print(region)
         #print(xvals,yvals)
@@ -735,7 +876,7 @@ class Measure:
         print("Please select the region for a trapezoidal fit.")
         v, s = self.markregions(first_region)
 
-        self.plot(min(v), max(v), min(s), max(s))
+        self.plot(min(v), max(v), min(s), 1.25*max(s))
 
         global cid
         global coords_trap
@@ -771,7 +912,7 @@ class Measure:
                 del coords_trap
                 coords_trap = []
 
-                self.plot(min(v), max(v), min(s), max(s))
+                self.plot(min(v), max(v), min(s), 1.25*max(s))
                 cid = self.fig.canvas.mpl_connect('button_press_event', self.__trapezoidal_onclick)
                 response = input(
                     "Points cleared! Select 4 new points. Press Enter when done or type \'clear\' and press Enter to clear the selection.\n")
@@ -821,10 +962,10 @@ class Measure:
         base_vel = np.array(x_intercept)
         leftedge = []
         rightedge = []
-        for i in range(len(self.vel)):
-            if self.vel[i] > base_vel[1]:
+        for i in range(len(self.svel)):
+            if self.svel[i] > base_vel[1]:
                 rightedge.append(i)
-            if self.vel[i] < base_vel[0]:
+            if self.svel[i] < base_vel[0]:
                 leftedge.append(i)
         leftedge = max(leftedge) - 1
         # This throws an error with max, and works correctly with min, so has been modified according.
@@ -857,10 +998,10 @@ class Measure:
         self.ax.plot(halfmax, [peakval / 2, peakval / 2], color='red', linestyle='--', linewidth=0.5)
         # Find the delta-v at the center channel
         centerchan = int((leftedge + rightedge) / 2.)
-        deltav = abs(self.vel[centerchan + 1] - self.vel[centerchan - 1]) / 2.
+        deltav = abs(self.svel[centerchan + 1] - self.svel[centerchan - 1]) / 2.
         totflux = 0.  # Running total of the integrated flux density
         for i in range(leftedge, rightedge):  # finding the area of the total region
-            deltav = abs(self.vel[i] - self.vel[i - 2]) / 2.
+            deltav = abs(self.svel[i] - self.svel[i - 2]) / 2.
             #totflux += deltav * (-self.spec[i])
             #totflux += deltav * (abs(self.spec[i]))
             totflux += deltav * self.spec[i]
@@ -933,17 +1074,17 @@ class Measure:
         :param comments: comments on the fit
         """
 
-        file_exists = os.path.exists('ReducedData.csv')
+        file_exists = os.path.exists('default_output_pyappss.csv')
         if file_exists == False:
-            file = open('ReducedData.csv', 'x')
+            file = open('default_output_pyappss.csv', 'x')
             message_info = (
-                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,SMrms,comments' + '\n')
+                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,xSN,xrms,comments' + '\n')
 #                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,comments' + '\n')
             file.write(message_info)
 
         hdr = self.header#self.__get_header()
         #print(hdr)
-        file = open('ReducedData.csv', 'a')
+        file = open('default_output_pyappss.csv', 'a')
         #try:
         # Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
         if comments=='':
@@ -959,11 +1100,11 @@ class Measure:
                    f"{self.w20:.2f}" + ',' +
                    f"{self.flux:.2f}" + ',' + f"{self.fluxerr:.2f}" + ',' +
                    f"{self.SN:.2f}" + ',' + f"{self.rms:.2f}" + ',' + str(self.smo) + ',' +
-                   str(fittype) + ',' + f"{self.srms:.2f}" + ',' +  str(comments) + '\n'
+                   str(fittype) + ',' + f"{self.xSN:.2f}" + ',' + f"{self.xrms:.2f}" + ',' +  str(comments) + '\n'
 #                       str(fittype) + ',' + str(comments) + '\n'
                    )
         file.write(message)
-        print('Successfully wrote measurement info to ReducedData.csv.')
+        print('Successfully wrote measurement info to default_output_pyappss.csv.\n')
         self.__save_spec()
         #except:
         #    print('Error: Unable to write output to ReducedData.CSV')

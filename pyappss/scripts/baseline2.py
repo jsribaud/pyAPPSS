@@ -31,7 +31,7 @@ class Baseline:
     AGC number of the galaxy, e.g, 104365
     """
 
-    def __init__(self, filename, smooth_int, path="", noconfirm=False, dark_mode=False):
+    def __init__(self, filename, smooth_int=1, path="", noconfirm=False, dark_mode=False, no_smooth=False):
         # Filename modified: to AGCxxxxx.fits
         # May align more favorably with desired format, may not. Matches convert.py naming.
         #print('in baseline, filename = ',filename)
@@ -40,7 +40,7 @@ class Baseline:
         else:
             self.filename = 'AGC{}.fits'.format(filename)
         #print('in baseline ',self.filename)
-        self.path = pathlib.PurePath(path + "/" + self.filename)
+        #self.path = pathlib.PurePath(path + "/" + self.filename)
         self.path = self.filename
         self.smoothed = False
         self.n = -1
@@ -50,10 +50,11 @@ class Baseline:
         self.freq = []
         self.yfit = []
         self.res = []
-        self.smo = []
-        self.rms = 0
+        self.smo = smooth_int
+        self.xrms = 0
         self.specrms = 0
-        self.srms = 0
+        self.rms = 0
+        #self.colnames = {}
         
 
         self.__load()
@@ -72,11 +73,25 @@ class Baseline:
         noconfirm = noconfirm
 
 
-
-        self.smo = smooth2.smooth(self.spec, smooth_type=smooth_int)
+        #print(smooth_int)
+        if no_smooth:
+            stab, smx = smooth2.smooth(self.tab, no_smooth=True)
+            # self.tab['FLUX_rebin'] = stab['FLUX']
+            # self.tab['VELOCITY_rebin'] = stab['VELOCITY']
+            #self.sflx = stab['FLUX']
+            #self.svel = stab['VELOCITY']
+            #self.vel = self.tab['VHELIO']
+            #self.res = smx
+        else:
+            stab, smx = smooth2.smooth(self.tab, box_width=smooth_int)
         self.smoothed = True
-
-        self.res = self.smo
+        #self.data['SM_FLUX'] = stab['FLUX']
+        #self.res = self.smo
+        self.stab = stab
+        self.sflx = stab['FLUX']
+        self.svel = stab['VELOCITY']
+        self.sbase = stab['BASELINE']
+        self.res = smx
 
         self.__first_plot()
 
@@ -85,50 +100,49 @@ class Baseline:
                          'Enter "y" to fit a new baseline. Hit "Return" to continue with the current baseline. \n')
 
         if response=='y':
+
             self.fit_baseline(noconfirm)
             self.__plot()
 
             #update flux and baseline arrays before ending
-            self.data['FLUX']=self.spec-self.yfit
-            self.data['BASELINE']=self.yfit
-            self.data['SM_FLUX']=self.smo
+            self.tab['FLUX']=self.spec-self.yfit
+            self.tab['BASELINE']=self.yfit
+
             input('Press Enter to end Baseline.')
-            self.hdr['RMS'] = self.rms
+            self.hdr['xRMS'] = self.xrms
             self.hdr['Hanning'] = 'True'
-            if smooth_int is not None:
+            if smooth_int > 1:
                 self.hdr['Boxcar'] = smooth_int
             else:
                 self.hdr['Boxcar'] = 'False'
-            self.hdr['SM_RMS'] = self.srms
+            self.hdr['RMS'] = self.rms
             #plt.close()  # close the window (measure makes a new one)
         else:
 
             #self.res = self.smo#self.data['FLUX']
+            #self.data['SM_FLUX'] = stab['FLUX']
             self.fit_baseline(noconfirm,rms_only=True)
-            self.smoothed = False
-            self.data['SM_FLUX'] = self.smo
-            self.hdr['RMS'] = self.rms
+            #self.smoothed = False
+            self.hdr['xRMS'] = self.xrms
             self.hdr['Hanning'] = 'True'
-            if smooth_int is not None:
+            if smooth_int > 1:
                 self.hdr['Boxcar'] = smooth_int
             else:
                 self.hdr['Boxcar'] = 'False'
-            self.hdr['SM_RMS'] = self.srms
+            self.hdr['RMS'] = self.rms
             self.__plot()
             #plt.close()
 
     def __call__(self):
-        return self.vel, self.res, self.rms, self.srms, self.yfit, self.data, self.hdr
+        return self.vel, self.res, self.xrms, self.rms, self.yfit, self.tab, self.hdr, self.stab
 
     def __load(self):
         """
         Reads the FITS file and loads the data into the arrays.
         """
-        hdulx = fits.open(self.path)
-        tdata = Table(hdulx[1].data)#Table.read(self.path)
-        self.hdr = hdulx[1].header
-        #hdul = Table.read(self.path)
-        #tmptab = Table.read(self.path)
+        thdu = fits.open(self.path)
+        # tmptab = Table.read(self.path)
+        tmptab = Table(thdu[1].data)
         velname = 'VELOCITY'
         fluxname = 'FLUX'
         freqname = 'FREQUENCY'
@@ -139,34 +153,35 @@ class Baseline:
         flux_list = ['FLUX', 'Flux', 'SPEC', 'Spec']
         weight_list = ['WEIGHT', 'Weight']
         baseline_list = ['BASELINE', 'Baseline']
-        for ii in range(len(tdata.colnames)):
-            if tdata.colnames[ii] in vel_list:
-                velname = tdata.colnames[ii]
-            if tdata.colnames[ii] in freq_list:
-                freqname = tdata.colnames[ii]
-            if tdata.colnames[ii] in flux_list:
-                fluxname = tdata.colnames[ii]
-            if tdata.colnames[ii] in weight_list:
-                weightname = tdata.colnames[ii]
-            if tdata.colnames[ii] in baseline_list:
-                baselinename = tdata.colnames[ii]
+        for ii in range(len(tmptab.colnames)):
+            if tmptab.colnames[ii] in vel_list:
+                velname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in freq_list:
+                freqname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in flux_list:
+                fluxname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in weight_list:
+                weightname = tmptab.colnames[ii]
+            if tmptab.colnames[ii] in baseline_list:
+                baselinename = tmptab.colnames[ii]
+        tmpsort = np.argsort(tmptab[velname])  # checks for spectra format (increasing v or f)
+        hdul = tmptab[tmpsort]  # forces spectra to increase in v
+        self.tab = hdul
+        self.hdr = thdu[1].header
 
-        #cnames = [velname,freqname,fluxname,weightname,baselinename]
+        #self.cnames = {'Velocity':velname,'Frequency':freqname,'Flux':fluxname,'Weight':weightname,'Baseline':baselinename}
 
         try:
-            tmpsort = np.argsort(tdata[velname])  # checks for spectra format (increasing v or f)
-            hdul = tdata[tmpsort]  # forces spectra to increase in v
-            self.vel = np.array(hdul[velname].value, 'd')
-            self.freq = np.array(hdul[freqname].value, 'd')
-            self.spec = np.array(hdul[fluxname].value, 'd')
-            self.weight = np.array(hdul[weightname].value, 'd')
-            self.baseline = np.array(hdul[baselinename].value, 'd')
-            self.data = hdul
-            self.data.rename_column(velname, 'VELOCITY')
-            self.data.rename_column(freqname, 'FREQUENCY')
-            self.data.rename_column(fluxname, 'FLUX')
-            self.data.rename_column(weightname, 'WEIGHT')
-            self.data.rename_column(baselinename, 'BASELINE')
+            self.vel = np.array(self.tab[velname].value, 'd')
+            self.freq = np.array(self.tab[freqname].value, 'd')
+            self.spec = np.array(self.tab[fluxname].value, 'd')
+            self.weight = np.array(self.tab[weightname].value, 'd')
+            self.baseline = np.array(self.tab[baselinename].value, 'd')
+            self.tab.rename_column(velname, 'VELOCITY')
+            self.tab.rename_column(freqname, 'FREQUENCY')
+            self.tab.rename_column(fluxname, 'FLUX')
+            self.tab.rename_column(weightname, 'WEIGHT')
+            self.tab.rename_column(baselinename, 'BASELINE')
         except:
             print('Unable to properly load fits table - column names unrecognized. Run gbtfits_load() on your GBT'+
                   'data to produce an appropriate file format. Or use the flag -gbt_fits to load a GBT .FITS file.')
@@ -220,8 +235,10 @@ class Baseline:
         #    self.res = smooth2.smooth(self.spec)  # smooth the function (hanning) if not already done
         props = dict(boxstyle='round', facecolor='skyblue')
         self.ax.text(0.1, 1.05, "Baselining", transform=self.ax.transAxes, fontsize=14, bbox=props)
-        self.ax.step(self.vel, self.res+self.baseline, linewidth=1,color='k')
-        self.ax.plot(self.vel, self.baseline, linewidth=2, ls='--', color='r')
+        #self.ax.step(self.vel, self.spec+self.baseline, linewidth=1,color='k')
+        #self.ax.plot(self.vel, self.baseline, linewidth=2, ls='--', color='r')
+        self.ax.step(self.svel, self.sflx+self.sbase, linewidth=1,color='k')
+        self.ax.plot(self.svel, self.sbase, linewidth=2, ls='--', color='r')
         self.ax.axhline(y=0, dashes=[5, 5])
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
         title = self.filename[3:-5]  # get just the AGC number
@@ -235,10 +252,11 @@ class Baseline:
         #    self.res = smooth2.smooth(self.spec)  # smooth the function (hanning) if not already done
         props = dict(boxstyle='round', facecolor='skyblue')
         self.ax.text(0.1, 1.05, "Baselining", transform=self.ax.transAxes, fontsize=14, bbox=props)
-        self.ax.step(self.vel, self.res, linewidth=1,color='k')
+        #self.ax.step(self.vel, self.spec, linewidth=1,color='k')
+        self.ax.step(self.svel, self.sflx, linewidth=1, color='k')
         self.ax.axhline(y=0, dashes=[5, 5])
         self.ax.set(xlim=(xmin, xmax), ylim=(ymin, ymax))
-        title = self.filename[3:-5]  # get just the AGC number
+        title = self.filename[:-5]  # get just the AGC number
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title='AGC {}'.format(title))
 
         self.fig.canvas.draw()
@@ -299,7 +317,9 @@ class Baseline:
             else:
                 response = input()
         X = []
+        sX = []
         self.m = []
+        self.sm = []
         regions.sort()
         self.specrms=0
         nrms=0
@@ -315,14 +335,27 @@ class Baseline:
                     nrms=nrms+1
                 j = j + 2
             self.m.append(inRegion)
+        for i in range(len(self.svel)):
+            j = 0
+            inRegion = False
+            while j < len(regions) - 1:
+                # Used to set regions as between each pair of entries.
+                if self.svel[i] >= regions[j] and self.svel[i] <= regions[j + 1]:
+                    sX.append(self.svel[i])
+                    inRegion = True
+                    self.specrms=self.specrms+self.sflx[i]*self.sflx[i]
+                    nrms = nrms + 1
+                j = j + 2
+            self.sm.append(inRegion)
         self.n = len(X)
         self.m = np.array(self.m)
+        self.sm = np.array(self.sm)
         self.specrms = np.sqrt(self.specrms / nrms)
-        self.rms = np.std(self.spec[self.m])
-        self.srms = np.std(self.smo[self.m])
+        self.xrms = np.std(self.spec[self.m])
+        self.rms = np.std(self.sflx[self.sm])
         #print('Spectrum rms in selected regions is', f"{self.specrms:.2f}")
-        print('Spectrum rms in selected regions is', f"{self.rms:.2f}")
-        print('Smoothed spectrum rms in selected regions is', f"{self.srms:.2f}")
+        print('Original spectrum rms in selected regions is', f"{self.xrms:.2f}")
+        print('Smoothed spectrum rms in selected regions is', f"{self.rms:.2f}")
 
     def __mask_rms(self):
 
@@ -353,6 +386,8 @@ class Baseline:
                 response = input()
         X = []
         self.m = []
+        sX = []
+        self.sm = []
         regions.sort()
         self.specrms = 0
         nrms = 0
@@ -368,14 +403,26 @@ class Baseline:
                     nrms = nrms + 1
                 j = j + 2
             self.m.append(inRegion)
-        self.n = len(X)
-        self.m = np.array(self.m)
+        for i in range(len(self.svel)):
+            j = 0
+            inRegion = False
+            while j < len(regions) - 1:
+                # Used to set regions as between each pair of entries.
+                if self.svel[i] >= regions[j] and self.svel[i] <= regions[j + 1]:
+                    sX.append(self.svel[i])
+                    inRegion = True
+                    self.specrms=self.specrms+self.sflx[i]*self.sflx[i]
+                    nrms = nrms + 1
+                j = j + 2
+            self.sm.append(inRegion)
+        self.sn = len(sX)
+        self.sm = np.array(self.sm)
         self.specrms = np.sqrt(self.specrms/nrms)
-        self.rms = np.std(self.spec[self.m])
-        self.srms = np.std(self.smo[self.m])
+        self.xrms = np.std(self.spec[self.m])
+        self.rms = np.std(self.sflx[self.sm])
         #print('Spectrum rms in selected regions is', f"{self.specrms:.2f}")
-        print('Spectrum rms in selected regions is', f"{self.rms:.2f}")
-        print('Smoothed spectrum rms in selected regions is', f"{self.srms:.2f}")
+        print('Original spectrum rms in selected regions is', f"{self.xrms:.2f}")
+        print('Smoothed spectrum rms in selected regions is', f"{self.rms:.2f}")
 
         '''file_exists = os.path.exists('RMS.csv')
         if file_exists == False:
@@ -543,7 +590,7 @@ class Baseline:
             accepted = False
             while not accepted:
                 plt.title(f"Plot for order {order}")
-                (self.rms, self.aic, self.yfit) = self.fitpoly(
+                (self.xrms, self.aic, self.yfit) = self.fitpoly(
                     order)  # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
                 self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
                 #self.res = (np.asarray(self.spec) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
@@ -578,25 +625,27 @@ class Baseline:
                     for i in range(3):
                         # remove the previous fit
                         line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
-                        self.ax.lines.remove(line)
+                        print(line)
+                        #self.ax.lines.remove(line)
+                        #self.ax.lines.remove(self.current_line)
                         # plot the given order then wait 5 seconds to remove it
-                        (self.rms, self.aic, self.yfit) = self.fitpoly(
+                        (self.xrms, self.aic, self.yfit) = self.fitpoly(
                             recommended[i])  # receiving rms, p, and yfit from the fitpoly function, using previously recommended order
                         self.res = (np.asarray(self.smo) - np.asarray(self.yfit))  # baseline subtracted spectrum (residual)
-                        self.ax.plot(self.vel, self.yfit, linestyle='--', color='black', linewidth='1', label='yfit')
+                        self.ax.plot(self.vel, self.yfit, linestyle='--', color='orange', linewidth='1', label='yfit')
                         plt.title(f"Plot for order {recommended[i]}")
                         plt.pause(3)
 
                     # restore to the reccomened order
                     line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
-                    self.ax.lines.remove(line)
+                    #self.ax.lines.remove(line)
                     print("Shuffle has concluded.")
                     order = recommended[0]
 
                 else:
                     order = int(response)
                     line = [line for line in self.ax.lines if line.get_label() == 'yfit'][0]
-                    self.ax.lines.remove(line)
+                    #self.ax.lines.remove(line)
                     if order < 10:
                         print('Plotting a ' + titles[order] + ' order fit.')
                     else:

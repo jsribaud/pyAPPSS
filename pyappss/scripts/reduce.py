@@ -14,9 +14,11 @@ def reduce():
     parser = argparse.ArgumentParser(description="Baseline and Reduce HI Spectrum.")
     parser.add_argument('filename', metavar='AGC', nargs='+', type=str,
                         help="AGC number of the galaxy, e.g, 104365. You may list multiple. e.g. 3232 104365 1993 .... OR you can enter the full filename, including the .fits extension.")
-    parser.add_argument('--smo', metavar='smooth', type=int,
+    parser.add_argument('--smo', metavar='smooth', type=int, default=1,
                         help="Value for smoothing the spectrum, if nothing is passed Hanning smooth will occur by default;"
                              "\n 'X' for boxcar where X is a postive integer.")
+    parser.add_argument('--no_smooth', metavar='no_smooth', type=bool, default=False,
+                        help='No smoothing done on data - for final version data, i.e. ALFALFA. Default is no_smooth = False')
     parser.add_argument('--gauss', action='store_true', help='Do a Gaussian fit of the spectrum')
     parser.add_argument('--twopeak', action='store_true', help='Do a Two Peak fit of the spectrum')
     parser.add_argument('--trap', action='store_true', help='Do a Trapezoidal fit of the spectrum')
@@ -43,7 +45,8 @@ def reduce():
     noconfirm = args.noconfirm
     mgauss = args.multigauss
     overlay = args.overlay
-
+    nosmooth = args.no_smooth
+    
     # check to see if agc
 
     for agc in agcs:
@@ -63,17 +66,20 @@ def reduce():
             #    print(f'file {filename} does exist')
 
             if not mgauss:
-                b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode)
-                vel, spec, rms, srms, bline, data, header = b()
+                b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode,
+                                      no_smooth=nosmooth)
+                vel, spec, xrms, rms, bline, tab, header, stab = b()
                 response = input('Is there an emission profile to measure?\n'
                       'Enter "y" to start the measuring procedure or hit "Return" to exit the program. \n')
                 #response = input()
                 if response != 'y':
                     print('No profile to measure - writing out rms information to file...')
                     measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
-                                vel=vel, spec=spec, rms=rms, bline=bline, srms=srms, data=data, header=header, agc=agc, noconfirm=noconfirm, overlay=overlay, detection=False)
+                                vel=vel, spec=spec, xrms=xrms, bline=bline, rms=rms, tab=tab, header=header, agc=agc,
+                                    noconfirm=noconfirm, overlay=overlay, stab=stab, detection=False)
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
-                                vel=vel, spec=spec, rms=rms, bline=bline, srms=srms, data=data, header=header, agc=agc, noconfirm=noconfirm, overlay=overlay)
+                                vel=vel, spec=spec, xrms=xrms, bline=bline, rms=rms, tab=tab, header=header, agc=agc,
+                                noconfirm=noconfirm, stab=stab, overlay=overlay)
 
             if mgauss:
                 if smo is None:
