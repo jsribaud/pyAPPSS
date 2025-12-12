@@ -68,17 +68,17 @@ def reduce():
             if not mgauss:
                 b = baseline.Baseline(filename, smooth_int=smo, path=path, noconfirm=noconfirm, dark_mode=dark_mode,
                                       no_smooth=nosmooth)
-                vel, spec, xrms, rms, bline, tab, header, stab = b()
+                tab, header, stab, xrms, rms = b()
                 response = input('Is there an emission profile to measure?\n'
                       'Enter "y" to start the measuring procedure or hit "Return" to exit the program. \n')
                 #response = input()
                 if response != 'y':
                     print('No profile to measure - writing out rms information to file...')
                     measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
-                                vel=vel, spec=spec, xrms=xrms, bline=bline, rms=rms, tab=tab, header=header, agc=agc,
+                                xrms=xrms, rms=rms, tab=tab, header=header, agc=agc,
                                     noconfirm=noconfirm, overlay=overlay, stab=stab, detection=False)
                 measure.Measure(smo=smo, gauss=gauss, twopeak=twopeak, trap=trap, path=path, dark_mode=dark_mode,
-                                vel=vel, spec=spec, xrms=xrms, bline=bline, rms=rms, tab=tab, header=header, agc=agc,
+                                xrms=xrms, rms=rms, tab=tab, header=header, agc=agc,
                                 noconfirm=noconfirm, stab=stab, overlay=overlay)
 
             if mgauss:

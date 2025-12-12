@@ -32,7 +32,8 @@ def smooth(tab, box_width=1, yfit=None, no_smooth=False):
         fflux=tab['FLUX']
         ffreq=tab['FREQUENCY']
         fbase = tab['BASELINE']
-        ftab=Table([ffreq,fvel,fflux,fbase],names=['FREQUENCY','VELOCITY','FLUX','BASELINE'])
+        fweight = tab['WEIGHT']
+        ftab=Table([ffreq,fvel,fflux,fbase,fweight],names=['FREQUENCY','VELOCITY','FLUX','BASELINE','WEIGHT'])
         smflux2=fflux
         smooth_note = 'No smoothing applied to data.'
         hflag = 'NO'
@@ -49,11 +50,14 @@ def smooth(tab, box_width=1, yfit=None, no_smooth=False):
             tflux = smflux1[::box_width]
             #
             tbase = tab['BASELINE'][::box_width]
+            #
+            tweight = tab['WEIGHT'][::box_width]
         else:
             smflux1 = tab['FLUX']
             tfreq = tab['FREQUENCY']
             tvel = tab['VELOCITY']
             tbase = tab['BASELINE']
+            tweight = tab['WEIGHT']
             tflux = smflux1
         #hanning smooth
         hann1d = Trapezoid1DKernel(width=1)
@@ -64,7 +68,8 @@ def smooth(tab, box_width=1, yfit=None, no_smooth=False):
         fvel = tvel[::2]
         fflux = hanflux[::2]
         fbase = tbase[::2]
-        ftab = Table([ffreq,fvel,fflux,fbase],names=['FREQUENCY','VELOCITY','FLUX','BASELINE'])
+        fweight = tweight[::2]
+        ftab = Table([ffreq,fvel,fflux,fbase,fweight],names=['FREQUENCY','VELOCITY','FLUX','BASELINE','WEIGHT'])
     delf = str(ffreq[0]-ffreq[1])[:6]+' MHz'
     delvh = fvel[1]-fvel[0]
     delvl = fvel[-1]-fvel[-2]
@@ -85,4 +90,4 @@ def smooth(tab, box_width=1, yfit=None, no_smooth=False):
         sflag = 'NO'
     sm_width = str(box_width)
     smooth_info = [delf, delv, sflag, hflag, sm_width, smooth_note]
-    return ftab, smflux2
+    return ftab, smooth_info

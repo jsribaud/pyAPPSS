@@ -13,10 +13,12 @@ import scipy.optimize as opt
 from astropy.modeling import models
 from astropy.modeling.models import custom_model
 from astropy.modeling import fitting
+from astropy import units as u
 
 #from pyappss.analysis import smooth
 #from pyappss.analysis import multigauss
 import smooth2
+import load2
 
 class Measure:
     """
@@ -53,7 +55,8 @@ class Measure:
 
     def __init__(self, filename=None, smo=1, gauss=False, twopeak=False, trap=False, path="", dark_mode=False,
                  vel=None, spec=None, xrms=None, specrms=None, rms=None, bline=None, tab=None, header=None,
-                 agc=None, noconfirm=False, stab=None, overlay=False, detection=True, no_smooth=False, uat=False):
+                 agc=None, noconfirm=False, stab=None, overlay=False, detection=True, no_smooth=False,
+                 uat=False, gbtidl_fits=False):
         self.base = True  # for now
         self.smoothed = False
         self.boxcar = False  # tracks if the spectrum has been boxcar smoothed
@@ -80,7 +83,7 @@ class Measure:
         self.flux = 0
         self.fluxerr = 0
         self.SN = 0
-        self.SMSN = 0
+        self.xSN = 0
 
         self.currfit = ""  # current fit type
 
@@ -97,52 +100,43 @@ class Measure:
         if filename != None:
             self.filename = filename#'AGC{:0}.fits'.format(filename)
             self.path = self.filename#pathlib.PurePath(path + "/" + self.filename)
-            #print(os.path.exists(self.path))
-            self.load()
-            #self.plot()
+
+            self.tab, self.hdr = load2.load(self.filename,gbtidl_fits=gbtidl_fits)
+            self.hdr['ORIGFILE'] = self.filename
+
             if no_smooth:
-                stab, smx = smooth2.smooth(self.tab,no_smooth=no_smooth)
-                #self.tab['FLUX_rebin'] = stab['FLUX']
-                #self.tab['VELOCITY_rebin'] = stab['VELOCITY']
+                self.stab, smx = smooth2.smooth(self.tab,no_smooth=no_smooth)
                 self.sflx = stab['FLUX']
                 self.svel = stab['VELOCITY']
-                self.vel = self.tab['VELOCITY']
-                self.spec = self.tab['FLUX']
-                self.res = smx
+                self.spec = np.array(self.tab['FLUX'])
+                self.vel = np.array(self.tab['VELOCITY'])
+                self.hdr['Hanning'] = 'False'
+                self.hdr['Boxcar'] = 1
+                self.hdr['VELRES'] = str(smx[1])
             else:
-                '''if smo==1:
-                    #just perform Hanning smoothing
-                    stab, smx = smooth2.smooth(self.tab)
-                else:
-                    stab, smx = smooth2.smooth(self.tab,box_width=smo)'''
-                stab, smx = smooth2.smooth(self.tab, box_width=smo)
-                self.sflx = stab['FLUX']
-                self.vel = self.tab['VELOCITY']
-                self.spec = self.tab['FLUX']
-                self.svel = stab['VELOCITY']
-                #self.tab['FLUX_rebin'] = stab['FLUX']
-                #self.tab['VELOCITY_rebin'] = stab['VELOCITY']
+                self.stab, smx = smooth2.smooth(self.tab, box_width=smo)
+                self.sflx = self.stab['FLUX']
+                self.svel = self.stab['VELOCITY']
+                self.spec = np.array(self.tab['FLUX'])
+                self.vel = np.array(self.tab['VELOCITY'])
+                self.hdr['Hanning'] = 'True'
+                self.hdr['Boxcar'] = smo
+                self.hdr['VELRES'] = str(smx[1])
                 self.boxcar = True
-                self.res = smx
-                #print(self.vel)
-                #print(self.smo)
-            #print(self.smo)
         else:
+            self.stab = stab
             self.tab = tab
-            self.vel = self.tab['VELOCITY']
-            #self.res = spec
-            #self.spec = spec
-            self.res = self.tab['FLUX']
-            self.spec = self.tab['FLUX']
+            self.vel = np.array(self.tab['VELOCITY'])
+            self.res = np.array(self.tab['FLUX'])
+            self.spec = np.array(self.tab['FLUX'])
             self.xrms = xrms
             self.rms = rms
             self.specrms = specrms
             self.bline = bline
-            self.sflx = stab['FLUX']
-            self.svel = stab['VELOCITY']
-            self.sbase = stab['BASELINE']
-            #self.tab = data
-            self.header = header
+            self.sflx = self.stab['FLUX']
+            self.svel = self.stab['VELOCITY']
+            self.sbase = self.stab['BASELINE']
+            self.hdr = header
             if '.fits' in agc:
                 self.filename = agc
             else:
@@ -154,11 +148,10 @@ class Measure:
         
         if detection!=True:
             self.plot()
-            #print('Executing the nondetection measure routine, i.e., just writing out rms information')
+            print('Executing the nondetection measure routine, i.e., just writing out rms information')
             self.__write_file(self.__get_comments(), 'nondetection')
             sys.exit()
 
-        #length = len(vel)
         length = len(self.svel)
         if self.overlay == True:
             self.y = []
@@ -177,6 +170,7 @@ class Measure:
 
         if filename is not None:
             self.calcRMS()
+            self.hdr['RMS'] = str(self.rms) + ' mJy'
         # Adds in a choice to change fit if baseline/viewable data leads reducer to want some different fit type.
         if noconfirm == False:
 
@@ -244,79 +238,6 @@ class Measure:
 
         plt.close()
 
-    def load(self):
-        """
-        Reads the FITS file and loads the data into the arrays.
-        """
-        thdu = fits.open(self.path)
-        # tmptab = Table.read(self.path)
-        tmptab = Table(thdu[1].data)
-        velname = 'VELOCITY'
-        fluxname = 'FLUX'
-        freqname = 'FREQUENCY'
-        weightname = 'WEIGHT'
-        baselinename = 'BASELINE'
-        vel_list = ['VHELIO', 'Vhelio', 'VELOCITY', 'Velocity', 'VEL', 'Vel']
-        freq_list = ['FREQUENCY', 'Frequency', 'FREQ', 'Freq']
-        flux_list = ['FLUX', 'Flux', 'SPEC', 'Spec']
-        weight_list = ['WEIGHT', 'Weight']
-        baseline_list = ['BASELINE', 'Baseline']
-        for ii in range(len(tmptab.colnames)):
-            if tmptab.colnames[ii] in vel_list:
-                velname = tmptab.colnames[ii]
-            if tmptab.colnames[ii] in freq_list:
-                freqname = tmptab.colnames[ii]
-            if tmptab.colnames[ii] in flux_list:
-                fluxname = tmptab.colnames[ii]
-            if tmptab.colnames[ii] in weight_list:
-                weightname = tmptab.colnames[ii]
-            if tmptab.colnames[ii] in baseline_list:
-                baselinename = tmptab.colnames[ii]
-        tmpsort = np.argsort(tmptab[velname])  # checks for spectra format (increasing v or f)
-        hdul = tmptab[tmpsort]  # forces spectra to increase in v
-        self.tab = hdul
-        self.header = thdu[1].header
-
-        # self.cnames = {'Velocity':velname,'Frequency':freqname,'Flux':fluxname,'Weight':weightname,'Baseline':baselinename}
-
-        try:
-            self.vel = np.array(self.tab[velname].value, 'd')
-            self.freq = np.array(self.tab[freqname].value, 'd')
-            self.spec = np.array(self.tab[fluxname].value, 'd')
-            self.weight = np.array(self.tab[weightname].value, 'd')
-            self.baseline = np.array(self.tab[baselinename].value, 'd')
-            self.tab.rename_column(velname, 'VELOCITY')
-            self.tab.rename_column(freqname, 'FREQUENCY')
-            self.tab.rename_column(fluxname, 'FLUX')
-            self.tab.rename_column(weightname, 'WEIGHT')
-            self.tab.rename_column(baselinename, 'BASELINE')
-        except:
-            print('Unable to properly load fits table - column names unrecognized. Run gbtfits_load() on your GBT' +
-                  'data to produce an appropriate file format. Or use the flag -gbt_fits to load a GBT .FITS file.')
-            sys.exit()
-
-        
-        self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
-        self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing nee
-
-        """
-        Reads the FITS file and loads the data into the arrays.
-        
-        hdul = fits.open(self.path)
-        fitsdata = hdul[1].data
-        entries = len(fitsdata)
-
-        self.freq = np.zeros(entries)
-        self.vel = np.zeros(entries)
-        self.spec = np.zeros(entries)
-
-        for i in range(len(fitsdata)):
-            self.vel[i] = fitsdata[i][0]
-            self.freq[i] = fitsdata[i][1]
-            self.spec[i] = fitsdata[i][2]
-            self.n = -1  # masking variable. set to -1 so we know that masking hasn't been done yet. after masking, this changes to the length of the list of the selected region.
-            self.smoothed = False  # smoothing boolean. If a hanning or boxcar smooth hasn't been performed, this indicates that smoothing needs to occur before showing the spectrum.
-        """
     def plot(self, xmin=None, xmax=None, ymin=None, ymax=None):
         """
         Plots the vel by the spec.
@@ -326,25 +247,8 @@ class Measure:
         :param ymax: optional ymax on the spectrum
         """
         plt.cla()
-        #print('Smoothing?')
-        if not self.smoothed:
-            print('Smoothing - line 252')
-            smooth2.smooth(self.spec)  # smooth the function (hanning) if not already done
 
-        # plt.ion()
-        # fig, ax = plt.subplots()
-
-        if not self.base:
-            self.ax.step(self.vel, self.spec, linewidth=1,color='r')
-            # ymin = min(self.smo)  # if not baselined, use max/min of the smoothed spectrum values
-            # ymax = max(self.smo)
-
-        else:
-            #self.ax.step(self.vel, self.res, linewidth=1,color='k')
-            self.ax.step(self.svel, self.sflx, linewidth=1, color='k')
-            # ymin = min(self.res)  # if already baselined, use max/min of residual values
-            # ymax = max(self.smo)
-
+        self.ax.step(self.svel, self.sflx, linewidth=1, color='k')
         self.ax.axhline(y=0, dashes=[5, 5])
         tmedflx = np.median(self.sflx)
         tmaxflx = np.max(self.sflx)
@@ -369,33 +273,6 @@ class Measure:
         self.ax.set(xlabel="Velocity (km/s)", ylabel="Flux (mJy)", title=title)
         self.fig.canvas.draw()
 
-    # def smooth(self, smoothtype=None):
-    #     """
-    #     Smooths the spec array values
-    #     :param smoothtype: Value for smoothing the spectrum, if nothing is passed Hanning smoothing smoothing will occur
-    #                         else, boxcar
-    #     """
-    #     self.n = smoothtype
-    #     self.yfit = np.zeros(len(self.spec))
-    #     if self.n == -1:  # if masking hasn't occured, neither has baselining. So for the purposes of the smooth function, the yfit array is just zeros.
-    #         self.yfit = np.zeros(len(self.spec))
-    #     smo = []
-    #     for i in range(len(self.spec)):
-    #         smo.append(self.spec[i] - self.yfit[i])
-    #         # Hanning smooth
-    #     window = [.25, .5, .25]
-    #     smo = np.convolve(smo, window, mode='same')
-    #     if smoothtype is not None:  # Boxcar smooth
-    #         window = []
-    #         if smoothtype % 2 == 1:  # if the user selected an even int for boxcar smooth, make it odd by adding 1.
-    #             smoothtype += 1
-    #         for i in range(int(smoothtype)):  # range
-    #             window.append(1 / float(smoothtype))
-    #         self.boxcar = True
-    #         smo = np.convolve(smo, window, 'same')
-    #     self.res = smo  # allows the plot to reflect the smoothing.
-    #     self.smoothed = True  # function is now smoothed, set to True
-
     def calcRMS(self):
         """
         Helper method to select regions for RMS claculation.
@@ -419,7 +296,6 @@ class Measure:
         global mark_regions
         global regions
         regions = []
-        #self.plot()
 
         mark_regions = self.fig.canvas.mpl_connect('button_press_event', self.__markregions_onclick)
         if calcrms==True:
@@ -448,39 +324,25 @@ class Measure:
                                  'or type "clear" and press Enter to clear region selection.\n')
             else:
                 response = input('Please press Enter if the region is OK, or type "clear" and press enter to clear region selection.\n')
-        # self.fig.canvas.mpl_disconnect(mark_regions)
+
         regions.sort()
         v = list()
         s = list()
         xs = list()
         xv = list()
-        #print(len(self.spec),len(self.sflx))
-        #print(len(self.vel),len(self.svel))
-        #print(regions)
+
         for i in range(len(self.svel)):
             for j in range(len(regions) - 1):
-
                 # constructing v and s lists if they are within the selected region.
                 if regions[j] <= self.svel[i] <= regions[j + 1]:
                     v.append(self.svel[i])
-                    #if len(self.res) != 0:
-                    #   s.append(self.res[i])
-                    #else:
-                    #    s.append(self.spec[i])
-                    #xs.append(self.spec[i])
                     s.append(self.sflx[i])
         for i in range(len(self.vel)):
             for j in range(len(regions) - 1):
                 # constructing v and s lists if they are within the selected region.
                 if regions[j] <= self.vel[i] <= regions[j + 1]:
                     xv.append(self.vel[i])
-                    #if len(self.res) != 0:
-                    #   s.append(self.res[i])
-                    #else:
-                    #    s.append(self.spec[i])
                     xs.append(self.spec[i])
-                    #s.append(self.sflx[i])
-        # changing v and s into numpy arrays so calculations become shorter.
 
         del mark_regions, regions
 
@@ -1082,7 +944,7 @@ class Measure:
 #                    'AGCnr,RA,DEC,Vsys(km/s),W50(km/s),W50err,W20(km/s),flux(Jy*km/s),fluxerr,SN,rms,smo,FitType,comments' + '\n')
             file.write(message_info)
 
-        hdr = self.header#self.__get_header()
+        #hdr = self.header#self.__get_header()
         #print(hdr)
         file = open('default_output_pyappss.csv', 'a')
         #try:
@@ -1092,7 +954,7 @@ class Measure:
         message = (str(self.filename) + ',' +
                    # Currently commented as GBT files lack attached galaxy names +f"{hdr['RA']:.4f}"
                    # str(hdr[16]) + ',' +
-                   f"{float(hdr['RA']):.6f}" + ',' + f"{float(hdr['DEC']):.6f}" + ',' +
+                   f"{float(self.hdr['RA']):.6f}" + ',' + f"{float(self.hdr['DEC']):.6f}" + ',' +
                    # Similarly, there is not a comparison between optical and radio coordinates.
                    # + str(hdr[18]) + ',' + str(hdr[19]) + ','
                     f"{self.vsys:.2f}" + ',' +
@@ -1113,18 +975,23 @@ class Measure:
     
     def __save_spec(self):
         #response=''
-        response = input('Do you want to save your updated spectrum?\n'
-                      'Type "yes" and press Enter to save the data OR press Enter to quit without saving.\n')
+        print('Do you want to save your updated spectrum?\n')
+        response = input('Type "yes" and press Enter to save the data OR press Enter to quit without saving.  ')
         #response = input()
 
         # allow the user to select new fits types
         if response != 'yes':
             sys.exit()
         else:
+            print('\n')
             response= input('Designate the filename for the spectrum - default name is "test_spec.fits"\n'
                       'Press Enter after typing filename or to proceed with default name.\n')
             #response = input()
-            hdx = fits.BinTableHDU(data=self.tab, header=self.header)
+            self.stab['VELOCITY'] = self.stab['VELOCITY']#*u.km/u.s
+            self.stab['FREQUENCY'] = self.stab['FREQUENCY']#*u.MHz
+            self.stab['FLUX'] = self.stab['FLUX']#*u.mJy
+            self.stab['BASELINE'] =self.stab['BASELINE']#*u.mJy
+            hdx = fits.BinTableHDU(data=self.stab, header=self.hdr)
             if response !='':
                 hdx.writeto(response,overwrite=True)
             else:
