@@ -493,6 +493,7 @@ class Measure:
         v, s, xv, xs = self.markregions(first_region)
         self.plot(min(v), max(v), min(s), 1.25*max(s))
 
+
         left = True  # left fitting starts as true, so user fits the left side of the emission first.
         right = False  # user will fit right side of emission second.
         leftcoef = []
@@ -506,6 +507,7 @@ class Measure:
             first_region = False
             leftv, lefts, leftxv, leftxs = self.markregions(first_region)
             fitedge = [min(leftv), max(leftv)]
+            #print(fitedge)
 
             # self.plot(None, None, min(self.res), max(self.res))
             try:
@@ -629,7 +631,7 @@ class Measure:
         return deltav, fluxerr, sn, xsn, totflux, xtotflux, vsys, vsyserr, w20, w20err, w50, w50err
 
     def edgefit(self, v, s, left=None, right=None):
-
+        print('trying edgefit')
         # passing left and right booleans to indicate which side we are fitting.
         # edgefit works for both left and right fit.
 
@@ -951,7 +953,8 @@ class Measure:
         # Modified to match the changes made to filename - pulls 4th entry and extends 6 further - should match the longest galaxy numbers.
         if comments=='':
             comments='nocomment'
-        message = (str(self.filename) + ',' +
+        try:
+            message = (str(self.filename) + ',' +
                    # Currently commented as GBT files lack attached galaxy names +f"{hdr['RA']:.4f}"
                    # str(hdr[16]) + ',' +
                    f"{float(self.hdr['RA']):.6f}" + ',' + f"{float(self.hdr['DEC']):.6f}" + ',' +
@@ -965,8 +968,10 @@ class Measure:
                    str(fittype) + ',' + f"{self.xSN:.2f}" + ',' + f"{self.xrms:.2f}" + ',' +  str(comments) + '\n'
 #                       str(fittype) + ',' + str(comments) + '\n'
                    )
-        file.write(message)
-        print('Successfully wrote measurement info to default_output_pyappss.csv.\n')
+            file.write(message)
+            print('Successfully wrote measurement info to default_output_pyappss.csv.\n')
+        except:
+            print('Error: Unable to write output to default_output_pyappss.csv.\n')
         self.__save_spec()
         #except:
         #    print('Error: Unable to write output to ReducedData.CSV')
